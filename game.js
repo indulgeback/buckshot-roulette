@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { initScene, animateShot, animateHit, animateRoundStart, animateShellReload, animateItemUse, animateStageTransition, animateVictory, animateDefeat, setDealerAnim, setSceneMood } from './scene.js';
-import { checkAchievements, resetSessionStats, toggleAchievementPanel } from './achievements.js';
-import { makeAIDecision } from './ai.js';
+import { checkAchievements, resetSessionStats, toggleAchievementPanel, getStats, trackStat } from './achievements.js';
+import { makeAIDecision, getAIDifficulty, setAIDifficulty } from './ai.js';
 import {
     playShotgunBlast, playBlankShot, playShellLoad,
     playItemUse, playHit, playRoundStart,
     playVictory, playGameOver, startBGMusic, stopBGMusic,
-    setMuted, getMuted
+    setMuted, getMuted, getSfxVolume, setSfxVolume, getBgmVolume, setBgmVolume
 } from './audio.js';
 import { t, setLang, getLang, initI18n, updateDOM, onLangChange } from './i18n.js';
 
@@ -340,6 +340,7 @@ async function init() {
     await initI18n();
     initScene();
     setupEventListeners();
+    setupSettingsListeners();
     updateUI();
     updateLangSwitchUI();
 }
@@ -421,9 +422,181 @@ function setupEventListeners() {
 
 function updateLangSwitchUI() {
     const current = getLang();
-    document.querySelectorAll('#lang-switch button').forEach(btn => {
+    document.querySelectorAll('#lang-switch button, #settings-lang-switch button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.lang === current);
     });
+}
+
+// ====== Settings ======
+
+const SETTINGS_KEY = 'buckshot_settings';
+let appSettings = loadSettings();
+
+function loadSettings() {
+    try {
+        const data = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+        if (data) return data;
+    } catch (e) { /* ignore */ }
+    return { screenShake: true, bloom: true };
+}
+
+function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); } catch (e) { /* ignore */ }
+}
+
+function openSettingsPanel() {
+    const panel = document.getElementById('settings-panel');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    syncSettingsUI();
+}
+
+function closeSettingsPanel() {
+    document.getElementById('settings-panel').classList.add('hidden');
+}
+
+function syncSettingsUI() {
+    // Volume sliders
+    const bgmSlider = document.getElementById('bgm-volume');
+    const sfxSlider = document.getElementById('sfx-volume');
+    if (bgmSlider) {
+        bgmSlider.value = Math.round(getBgmVolume() * 100);
+        document.getElementById('bgm-volume-val').textContent = bgmSlider.value + '%';
+    }
+    if (sfxSlider) {
+        sfxSlider.value = Math.round(getSfxVolume() * 100);
+        document.getElementById('sfx-volume-val').textContent = sfxSlider.value + '%';
+    }
+    // Toggle buttons
+    syncToggle('toggle-shake', appSettings.screenShake);
+    syncToggle('toggle-bloom', appSettings.bloom);
+    // Language
+    updateLangSwitchUI();
+    // Difficulty
+    syncDifficultyUI();
+}
+
+function syncToggle(id, active) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('active', active);
+    btn.textContent = active ? 'ON' : 'OFF';
+}
+
+function setupSettingsListeners() {
+    // Open/close
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn) settingsBtn.addEventListener('click', openSettingsPanel);
+    const settingsClose = document.getElementById('settings-close');
+    if (settingsClose) settingsClose.addEventListener('click', closeSettingsPanel);
+
+    // Volume sliders
+    document.getElementById('bgm-volume').addEventListener('input', (e) => {
+        const v = parseInt(e.target.value);
+        setBgmVolume(v / 100);
+        document.getElementById('bgm-volume-val').textContent = v + '%';
+    });
+    document.getElementById('sfx-volume').addEventListener('input', (e) => {
+        const v = parseInt(e.target.value);
+        setSfxVolume(v / 100);
+        document.getElementById('sfx-volume-val').textContent = v + '%';
+    });
+
+    // Toggles
+    document.getElementById('toggle-shake').addEventListener('click', (e) => {
+        appSettings.screenShake = !appSettings.screenShake;
+        syncToggle('toggle-shake', appSettings.screenShake);
+        saveSettings();
+    });
+    document.getElementById('toggle-bloom').addEventListener('click', (e) => {
+        appSettings.bloom = !appSettings.bloom;
+        syncToggle('toggle-bloom', appSettings.bloom);
+        saveSettings();
+    });
+
+    // Stats panel
+    const statsBtn = document.getElementById('stats-btn');
+    if (statsBtn) statsBtn.addEventListener('click', openStatsPanel);
+    const statsClose = document.getElementById('stats-close');
+    if (statsClose) statsClose.addEventListener('click', closeStatsPanel);
+
+    // Language switch inside settings
+    document.querySelectorAll('#settings-lang-switch button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            await setLang(btn.dataset.lang);
+            updateLangSwitchUI();
+            updateUI();
+            syncSettingsUI(); // refresh ON/OFF text in current language
+        });
+    });
+
+    // Difficulty switch
+    document.querySelectorAll('#difficulty-switch button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setAIDifficulty(btn.dataset.diff);
+            syncDifficultyUI();
+        });
+    });
+}
+
+function syncDifficultyUI() {
+    const current = getAIDifficulty();
+    document.querySelectorAll('#difficulty-switch button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.diff === current);
+    });
+}
+
+// ====== Stats Panel ======
+
+function openStatsPanel() {
+    const panel = document.getElementById('stats-panel');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    renderStats();
+}
+
+function closeStatsPanel() {
+    document.getElementById('stats-panel').classList.add('hidden');
+}
+
+function renderStats() {
+    const body = document.getElementById('stats-body');
+    if (!body) return;
+    const s = getStats();
+    const played = s.gamesPlayed || 0;
+    const won = s.gamesWon || 0;
+    const lost = played - won;
+    const rate = played > 0 ? Math.round((won / played) * 100) : 0;
+    const sc = s.stageClears || {};
+
+    if (played === 0) {
+        body.innerHTML = `<div class="stats-empty">${t('stats.notEnough')}</div>`;
+        return;
+    }
+
+    body.innerHTML = `
+        <div class="stats-overview">
+            <div class="stats-big"><span class="stats-big-num">${played}</span><span class="stats-big-label">${t('stats.totalGames')}</span></div>
+            <div class="stats-big"><span class="stats-big-num" style="color:#4ade80">${won}</span><span class="stats-big-label">${t('stats.wins')}</span></div>
+            <div class="stats-big"><span class="stats-big-num" style="color:#f87171">${lost}</span><span class="stats-big-label">${t('stats.losses')}</span></div>
+            <div class="stats-big"><span class="stats-big-num" style="color:var(--color-accent)">${rate}%</span><span class="stats-big-label">${t('stats.winRate')}</span></div>
+        </div>
+        <div class="stats-details">
+            ${statsRow(t('stats.bestStreak'), s.maxWinStreak || 0)}
+            ${statsRow(t('stats.currentStreak'), s.winStreak || 0)}
+            ${statsRow(t('stats.stageClears'), `S1:${sc[1]||0} S2:${sc[2]||0} S3:${sc[3]||0}`)}
+            ${statsRow(t('stats.donBest'), s.maxDonStreak || 0)}
+            ${statsRow(t('stats.totalShots'), s.totalShotsFired || 0)}
+            ${statsRow(t('stats.totalItems'), s.totalItemsUsed || 0)}
+            ${statsRow(t('stats.cigaretteHeals'), s.totalCigaretteHeals || 0)}
+            ${statsRow(t('stats.handcuffUses'), s.totalHandcuffUses || 0)}
+            ${statsRow(t('stats.sawHits'), s.totalSawHits || 0)}
+        </div>
+    `;
+}
+
+function statsRow(label, value) {
+    return `<div class="stats-row"><span>${label}</span><span>${value}</span></div>`;
 }
 
 // ====== Game Flow ======
@@ -572,6 +745,7 @@ async function executeShot(shooter, target) {
 
     // Achievement check
     const targetHpAfter = getEntity(target).hp;
+    trackStat('shotFired');
     checkAchievements('shot_fired', {
         shell, shooter, target,
         sawedOff: damage > 1,
@@ -601,6 +775,7 @@ function resolveAfterShot(shooter, target, shellType) {
             animateVictory();
             setSceneMood('victory');
             EventLog.add(t('don.win', { round: gameData.donRound }), 'victory', '🏆');
+            trackStat('donStreak', gameData.donRound);
             document.getElementById('game-over-title').textContent = t('gameOver.donWin');
             document.getElementById('game-over-message').textContent = t('gameOver.donWinMsg', { round: gameData.donRound });
             document.getElementById('don-btn').style.display = 'block';
@@ -886,6 +1061,7 @@ function useItem(item, user) {
         }
     }
 
+    trackStat('itemUsed');
     checkAchievements('item_used', itemAchievementData);
     updateUI();
 
@@ -908,6 +1084,7 @@ function useItem(item, user) {
 
 async function nextStage() {
     const prevStage = gameData.stage;
+    trackStat('stageClear', prevStage);
     checkAchievements('stage_clear', { stage: prevStage });
     gameData.stage++;
     const config = STAGE_CONFIG[gameData.stage];

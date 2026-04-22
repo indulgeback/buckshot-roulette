@@ -245,5 +245,35 @@
 
   "lang.zh-CN": "中文",
   "lang.en": "English",
-  "lang.ja": "日本語"
+  "lang.ja": "日本語",
+
+  "settings.title": "⚙️ 设置",
+  "settings.language": "语言",
+  "settings.bgmVolume": "背景音乐",
+  "settings.sfxVolume": "音效",
+  "settings.effects": "视觉效果",
+  "settings.screenShake": "屏幕震动",
+  "settings.bloomEffect": "发光特效",
+  "settings.difficulty": "AI 难度",
+  "settings.difficulty.easy": "简单",
+  "settings.difficulty.normal": "普通",
+  "settings.difficulty.hard": "困难",
+  "settings.on": "开",
+  "settings.off": "关",
+
+  "stats.title": "📊 统计数据",
+  "stats.totalGames": "总场次",
+  "stats.wins": "胜利",
+  "stats.losses": "失败",
+  "stats.winRate": "胜率",
+  "stats.bestStreak": "最高连胜",
+  "stats.currentStreak": "当前连胜",
+  "stats.stageClears": "阶段通关",
+  "stats.donBest": "DoN 最高连胜",
+  "stats.totalShots": "总射击次数",
+  "stats.totalItems": "总道具使用",
+  "stats.cigaretteHeals": "香烟回血次数",
+  "stats.handcuffUses": "手铐使用次数",
+  "stats.sawHits": "手锯命中次数",
+  "stats.notEnough": "数据不足"
 }

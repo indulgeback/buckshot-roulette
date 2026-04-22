@@ -131,9 +131,11 @@
                     <button id="start-btn" class="menu-btn" data-i18n="ui.startGame">开始游戏</button>
                     <button id="achievement-btn" class="menu-btn" data-i18n="ui.achievements">🏆 成就</button>
                     <button id="how-to-play-btn" class="menu-btn menu-btn-secondary" data-i18n="ui.howToPlay">📖 游戏说明</button>
+                    <button id="settings-btn" class="menu-btn menu-btn-secondary" data-i18n="settings.title">⚙️ 设置</button>
+                    <button id="stats-btn" class="menu-btn menu-btn-secondary" data-i18n="stats.title">📊 统计数据</button>
                     <div id="lang-switch" class="lang-switch">
-                        <button data-lang="zh-CN" class="active">中文</button>
                         <button data-lang="en">English</button>
+                        <button data-lang="zh-CN" class="active">中文</button>
                         <button data-lang="ja">日本語</button>
                     </div>
                 </div>
@@ -194,6 +196,74 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Settings Panel -->
+            <div id="settings-panel" class="settings-panel hidden">
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <span data-i18n="settings.title">⚙️ 设置</span>
+                        <button id="settings-close" class="achievement-close">&times;</button>
+                    </div>
+                    <div class="settings-body">
+                        <div class="settings-section">
+                            <label data-i18n="settings.language">语言</label>
+                            <div id="settings-lang-switch" class="lang-switch lang-switch-inline">
+                                <button data-lang="en">English</button>
+                                <button data-lang="zh-CN">中文</button>
+                                <button data-lang="ja">日本語</button>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.bgmVolume">背景音乐</label>
+                            <div class="settings-slider-row">
+                                <input type="range" id="bgm-volume" class="settings-slider" min="0" max="100" value="30">
+                                <span id="bgm-volume-val" class="settings-slider-val">30%</span>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.sfxVolume">音效</label>
+                            <div class="settings-slider-row">
+                                <input type="range" id="sfx-volume" class="settings-slider" min="0" max="100" value="60">
+                                <span id="sfx-volume-val" class="settings-slider-val">60%</span>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.effects">视觉效果</label>
+                            <div class="settings-toggles">
+                                <div class="settings-toggle-row">
+                                    <span data-i18n="settings.screenShake">屏幕震动</span>
+                                    <button id="toggle-shake" class="settings-toggle active" data-key="screenShake">ON</button>
+                                </div>
+                                <div class="settings-toggle-row">
+                                    <span data-i18n="settings.bloomEffect">发光特效</span>
+                                    <button id="toggle-bloom" class="settings-toggle active" data-key="bloom">ON</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.difficulty">AI 难度</label>
+                            <div id="difficulty-switch" class="lang-switch lang-switch-inline">
+                                <button data-diff="easy" data-i18n="settings.difficulty.easy">简单</button>
+                                <button data-diff="normal" class="active" data-i18n="settings.difficulty.normal">普通</button>
+                                <button data-diff="hard" data-i18n="settings.difficulty.hard">困难</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div id="stats-panel" class="settings-panel hidden">
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <span data-i18n="stats.title">📊 统计数据</span>
+                        <button id="stats-close" class="achievement-close">&times;</button>
+                    </div>
+                    <div class="settings-body" id="stats-body">
+                    </div>
+                </div>
+            </div>
+
             <div id="game-over" class="menu-screen hidden">
                 <h1 id="game-over-title"></h1>
                 <p id="game-over-message"></p>

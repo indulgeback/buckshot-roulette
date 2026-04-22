@@ -245,5 +245,35 @@
 
   "lang.zh-CN": "中文",
   "lang.en": "English",
-  "lang.ja": "日本語"
+  "lang.ja": "日本語",
+
+  "settings.title": "⚙️ 設定",
+  "settings.language": "言語",
+  "settings.bgmVolume": "BGM",
+  "settings.sfxVolume": "効果音",
+  "settings.effects": "ビジュアルエフェクト",
+  "settings.screenShake": "画面シェイク",
+  "settings.bloomEffect": "ブルームエフェクト",
+  "settings.difficulty": "AI難易度",
+  "settings.difficulty.easy": "イージー",
+  "settings.difficulty.normal": "ノーマル",
+  "settings.difficulty.hard": "ハード",
+  "settings.on": "オン",
+  "settings.off": "オフ",
+
+  "stats.title": "📊 統計データ",
+  "stats.totalGames": "総ゲーム数",
+  "stats.wins": "勝利",
+  "stats.losses": "敗北",
+  "stats.winRate": "勝率",
+  "stats.bestStreak": "最高連勝",
+  "stats.currentStreak": "現在の連勝",
+  "stats.stageClears": "ステージクリア",
+  "stats.donBest": "DoN 最高連勝",
+  "stats.totalShots": "総射撃回数",
+  "stats.totalItems": "総アイテム使用",
+  "stats.cigaretteHeals": "タバコ回復回数",
+  "stats.handcuffUses": "手錠使用回数",
+  "stats.sawHits": "ノコギリ命中回数",
+  "stats.notEnough": "データ不足"
 }

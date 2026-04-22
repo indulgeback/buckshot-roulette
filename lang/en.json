@@ -245,5 +245,35 @@
 
   "lang.zh-CN": "中文",
   "lang.en": "English",
-  "lang.ja": "日本語"
+  "lang.ja": "日本語",
+
+  "settings.title": "⚙️ Settings",
+  "settings.language": "Language",
+  "settings.bgmVolume": "Music",
+  "settings.sfxVolume": "Sound Effects",
+  "settings.effects": "Visual Effects",
+  "settings.screenShake": "Screen Shake",
+  "settings.bloomEffect": "Bloom Effect",
+  "settings.difficulty": "AI Difficulty",
+  "settings.difficulty.easy": "Easy",
+  "settings.difficulty.normal": "Normal",
+  "settings.difficulty.hard": "Hard",
+  "settings.on": "On",
+  "settings.off": "Off",
+
+  "stats.title": "📊 Statistics",
+  "stats.totalGames": "Total Games",
+  "stats.wins": "Wins",
+  "stats.losses": "Losses",
+  "stats.winRate": "Win Rate",
+  "stats.bestStreak": "Best Streak",
+  "stats.currentStreak": "Current Streak",
+  "stats.stageClears": "Stage Clears",
+  "stats.donBest": "DoN Best Streak",
+  "stats.totalShots": "Total Shots",
+  "stats.totalItems": "Total Items Used",
+  "stats.cigaretteHeals": "Cigarette Heals",
+  "stats.handcuffUses": "Handcuff Uses",
+  "stats.sawHits": "Saw Hits",
+  "stats.notEnough": "Not enough data"
 }

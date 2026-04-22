@@ -166,6 +166,10 @@ function loadPersistentStats() {
         totalCigaretteHeals: 0,
         totalHandcuffUses: 0,
         totalSawHits: 0,
+        maxDonStreak: 0,
+        stageClears: { 1: 0, 2: 0, 3: 0 },
+        totalShotsFired: 0,
+        totalItemsUsed: 0,
         unlocked: {}
     };
 }
@@ -451,4 +455,22 @@ export function toggleAchievementPanel() {
 
 export function getUnlockCount() {
     return Object.keys(persistentStats.unlocked).length;
+}
+
+export function getStats() {
+    return persistentStats;
+}
+
+export function trackStat(key, value) {
+    if (key === 'donStreak') {
+        persistentStats.maxDonStreak = Math.max(persistentStats.maxDonStreak || 0, value);
+    } else if (key === 'stageClear') {
+        if (!persistentStats.stageClears) persistentStats.stageClears = { 1: 0, 2: 0, 3: 0 };
+        persistentStats.stageClears[value] = (persistentStats.stageClears[value] || 0) + 1;
+    } else if (key === 'shotFired') {
+        persistentStats.totalShotsFired = (persistentStats.totalShotsFired || 0) + 1;
+    } else if (key === 'itemUsed') {
+        persistentStats.totalItemsUsed = (persistentStats.totalItemsUsed || 0) + 1;
+    }
+    savePersistentStats();
 }
