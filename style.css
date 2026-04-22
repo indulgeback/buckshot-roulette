@@ -1500,6 +1500,34 @@ body::after {
     color: #fff !important;
 }
 
+/* ===== LANGUAGE SWITCH ===== */
+
+.lang-switch {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+}
+.lang-switch button {
+    background: transparent;
+    border: 1px solid #555;
+    color: #aaa;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.lang-switch button:hover {
+    border-color: #888;
+    color: #fff;
+}
+.lang-switch button.active {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    text-shadow: 0 0 8px rgba(240, 230, 140, 0.3);
+}
+
 @media (max-width: 768px) {
     .how-to-play-content {
         max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 40px);

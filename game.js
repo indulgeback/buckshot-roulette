@@ -8,6 +8,7 @@ import {
     playVictory, playGameOver, startBGMusic, stopBGMusic,
     setMuted, getMuted
 } from './audio.js';
+import { t, setLang, getLang, initI18n, updateDOM, onLangChange } from './i18n.js';
 
 // ====== Constants ======
 
@@ -22,35 +23,21 @@ const GameState = {
 };
 
 const Items = {
-    MAGNIFYING_GLASS: { id: 'magnifying_glass', name: '🔍', desc: '查看当前子弹' },
-    BEER: { id: 'beer', name: '🍺', desc: '退出当前子弹' },
-    HANDSAW: { id: 'handsaw', name: '🪚', desc: '双倍伤害' },
-    CIGARETTE: { id: 'cigarette', name: '🚬', desc: '恢复1生命' },
-    HANDCUFFS: { id: 'handcuffs', name: '⛓️', desc: '跳过对手回合' },
-    EXPIRED_MEDICINE: { id: 'expired_medicine', name: '💊', desc: '40%回2血/60%扣1血' },
-    INVERTER: { id: 'inverter', name: '🔄', desc: '反转当前子弹类型' },
-    BURNER_PHONE: { id: 'burner_phone', name: '📱', desc: '随机揭示一发剩余子弹' },
-    ADRENALINE: { id: 'adrenaline', name: '💉', desc: '偷取对手一个道具' }
+    MAGNIFYING_GLASS: { id: 'magnifying_glass' },
+    BEER: { id: 'beer' },
+    HANDSAW: { id: 'handsaw' },
+    CIGARETTE: { id: 'cigarette' },
+    HANDCUFFS: { id: 'handcuffs' },
+    EXPIRED_MEDICINE: { id: 'expired_medicine' },
+    INVERTER: { id: 'inverter' },
+    BURNER_PHONE: { id: 'burner_phone' },
+    ADRENALINE: { id: 'adrenaline' }
 };
 
 const STAGE_CONFIG = {
     1: { hp: 2, items: 0 },
     2: { hp: 4, items: 3 },
     3: { hp: 5, items: 4 }
-};
-
-const ShotMessages = {
-    live: {
-        'player-dealer': (d) => `命中！庄家受到 ${d} 点伤害`,
-        'player-player': (d) => `命中！你受到 ${d} 点伤害`,
-        'dealer-player': (d) => `庄家射中你！${d} 点伤害！`,
-        'dealer-dealer': (d) => `庄家射自己！${d} 点伤害！`
-    },
-    blank: {
-        'player-player': '空弹！你的回合继续',
-        'dealer-dealer': '空弹！庄家的回合继续',
-        _default: '空弹！'
-    }
 };
 
 const DELAY = {
@@ -69,12 +56,13 @@ let gameData = {
     dealer: { hp: 2, maxHp: 2, items: [], handcuffed: false },
     shotgun: { shells: [], currentIndex: 0, sawedOff: false },
     shellInfo: { live: 0, blank: 0 },
-    aiKnownShell: null
+    aiKnownShell: null,
+    donRound: 0
 };
 
 // Event Log System
 const EventLog = {
-    maxEntries: 50, // 增加到50条，基本不会删除
+    maxEntries: 50,
     entries: [],
 
     add(text, type = 'info', icon = '•') {
@@ -99,7 +87,6 @@ const EventLog = {
             </div>
         `).join('');
 
-        // 保持滚动条在顶部（显示最新消息）
         container.scrollTop = 0;
     },
 
@@ -131,7 +118,7 @@ function updateMuteButtons() {
     }
     const pauseBtn = document.getElementById('pause-mute-btn');
     if (pauseBtn) {
-        pauseBtn.textContent = isMuted ? '🔇 音乐：关' : '🔊 音乐：开';
+        pauseBtn.textContent = isMuted ? t('ui.musicOff') : t('ui.musicOn');
     }
 }
 
@@ -142,10 +129,9 @@ let pausedState = null;
 function togglePauseMenu() {
     const panel = document.getElementById('pause-menu');
     if (panel.classList.contains('hidden')) {
-        // Save current state and pause
         if (gameData.state !== GameState.MENU && gameData.state !== GameState.GAME_OVER && gameData.state !== GameState.VICTORY) {
             pausedState = gameData.state;
-            gameData.state = GameState.ANIMATING; // Block input
+            gameData.state = GameState.ANIMATING;
         }
         panel.classList.remove('hidden');
         updateMuteButtons();
@@ -218,6 +204,18 @@ function generateItems(count) {
     return Array.from({ length: count }, () => pool[Math.floor(Math.random() * pool.length)]);
 }
 
+function getShellText(shell) {
+    return shell === 'live' ? t('shell.live') : t('shell.blank');
+}
+
+function getShellShort(shell) {
+    return shell === 'live' ? t('shell.liveShort') : t('shell.blankShort');
+}
+
+function getActorName(who) {
+    return who === 'player' ? t('actor.you') : t('actor.dealer');
+}
+
 // ====== Debug Panel ======
 
 function toggleDebugPanel() {
@@ -253,7 +251,7 @@ function setDebugStage(stageNum) {
     gameData.dealer.maxHp = config.hp;
     gameData.player.hp = config.hp;
     gameData.dealer.hp = config.hp;
-    flashMessage(`调试：切换到阶段 ${stageNum}`, 1000);
+    flashMessage(t('debug.msg.switchStage', { stage: stageNum }), 1000);
     updateUI();
 }
 
@@ -261,19 +259,19 @@ function handleDebugHP(action) {
     switch (action) {
         case 'heal-player':
             gameData.player.hp = Math.min(gameData.player.hp + 1, gameData.player.maxHp);
-            flashMessage('调试：玩家 +1 生命', 800);
+            flashMessage(t('debug.msg.healPlayer'), 800);
             break;
         case 'hurt-player':
             gameData.player.hp = Math.max(gameData.player.hp - 1, 0);
-            flashMessage('调试：玩家 -1 生命', 800);
+            flashMessage(t('debug.msg.hurtPlayer'), 800);
             break;
         case 'heal-dealer':
             gameData.dealer.hp = Math.min(gameData.dealer.hp + 1, gameData.dealer.maxHp);
-            flashMessage('调试：庄家 +1 生命', 800);
+            flashMessage(t('debug.msg.healDealer'), 800);
             break;
         case 'hurt-dealer':
             gameData.dealer.hp = Math.max(gameData.dealer.hp - 1, 0);
-            flashMessage('调试：庄家 -1 生命', 800);
+            flashMessage(t('debug.msg.hurtDealer'), 800);
             break;
     }
     updateUI();
@@ -285,12 +283,12 @@ function handleDebugItem(action) {
             const count = STAGE_CONFIG[gameData.stage].items || 3;
             gameData.player.items = generateItems(count);
             gameData.dealer.items = generateItems(count);
-            flashMessage(`调试：给予 ${count} 个随机道具`, 800);
+            flashMessage(t('debug.msg.randomItem', { count }), 800);
             break;
         case 'clear':
             gameData.player.items = [];
             gameData.dealer.items = [];
-            flashMessage('调试：清空所有道具', 800);
+            flashMessage(t('debug.msg.clearItems'), 800);
             break;
     }
     updateUI();
@@ -301,7 +299,7 @@ function handleDebugControl(action) {
         case 'skip-dealer':
             if (gameData.state === GameState.DEALER_TURN) {
                 setTurn('player');
-                flashMessage('调试：跳过庄家回合', 800);
+                flashMessage(t('debug.msg.skipDealer'), 800);
             }
             break;
         case 'new-round':
@@ -315,22 +313,21 @@ function handleDebugShells(action) {
     switch (action) {
         case 'peek':
             if (currentShell) {
-                const shellText = currentShell === 'live' ? '实弹' : '空弹';
-                flashMessage(`调试：当前子弹是${shellText}`, 1500);
+                flashMessage(t('debug.msg.peekShell', { shell: getShellShort(currentShell) }), 1500);
             }
             break;
         case 'set-live':
             if (gameData.shotgun.currentIndex < gameData.shotgun.shells.length) {
                 gameData.shotgun.shells[gameData.shotgun.currentIndex] = 'live';
                 updateShellInfo();
-                flashMessage('调试：设为实弹', 1000);
+                flashMessage(t('debug.msg.setLive'), 1000);
             }
             break;
         case 'set-blank':
             if (gameData.shotgun.currentIndex < gameData.shotgun.shells.length) {
                 gameData.shotgun.shells[gameData.shotgun.currentIndex] = 'blank';
                 updateShellInfo();
-                flashMessage('调试：设为空弹', 1000);
+                flashMessage(t('debug.msg.setBlank'), 1000);
             }
             break;
     }
@@ -339,10 +336,12 @@ function handleDebugShells(action) {
 
 // ====== Init ======
 
-function init() {
+async function init() {
+    await initI18n();
     initScene();
     setupEventListeners();
     updateUI();
+    updateLangSwitchUI();
 }
 
 function setupEventListeners() {
@@ -403,9 +402,27 @@ function setupEventListeners() {
     // Menu mute button
     document.getElementById('menu-mute-btn').addEventListener('click', toggleMute);
 
+    // Language switch
+    document.querySelectorAll('#lang-switch button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const lang = btn.dataset.lang;
+            await setLang(lang);
+            updateLangSwitchUI();
+            updateUI();
+            // Re-render event log entries (they were logged with translated strings)
+        });
+    });
+
     // Escape key to toggle pause
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') togglePauseMenu();
+    });
+}
+
+function updateLangSwitchUI() {
+    const current = getLang();
+    document.querySelectorAll('#lang-switch button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === current);
     });
 }
 
@@ -420,7 +437,7 @@ function startGame() {
     EventLog.clear();
     resetSessionStats();
     gameData.donRound = 0;
-    EventLog.add('游戏开始！阶段 1 - 无道具', 'stage', '🎮');
+    EventLog.add(t('event.gameStart'), 'stage', '🎮');
     startBGMusic();
     startRound();
 }
@@ -456,14 +473,14 @@ async function startRound() {
     }
 
     EventLog.add(
-        `回合开始！${liveCount}发实弹 ${blankCount}发空弹`,
+        t('event.roundStart', { live: liveCount, blank: blankCount }),
         'round',
         '🔄'
     );
 
     checkAchievements('round_start', {});
 
-    await flashMessage(`回合开始！${liveCount} 实弹，${blankCount} 空弹`, DELAY.ROUND_START);
+    await flashMessage(t('event.roundStartFlash', { live: liveCount, blank: blankCount }), DELAY.ROUND_START);
 
     gameData.state = GameState.PLAYER_TURN;
     updateUI();
@@ -498,38 +515,54 @@ async function executeShot(shooter, target) {
         if (target === 'dealer') setDealerAnim('hit', 800);
         else setDealerAnim('taunting', 1500);
 
-        const shooterText = shooter === 'player' ? '你' : '庄家';
-        const targetText = target === 'player' ? '你' : '庄家';
+        const shooterName = getActorName(shooter);
+        const targetName = getActorName(target);
         const isSelf = shooter === target;
 
         if (isSelf) {
             EventLog.add(
-                `${shooterText}射自己 — 🔴 实弹！${damage} 点伤害`,
+                t('event.liveShotSelf', { damage }),
                 'shoot-live',
                 '💥'
             );
         } else {
             EventLog.add(
-                `${shooterText}射${targetText} — 🔴 实弹！${damage} 点伤害`,
+                t('event.liveShotOther', { target: targetName, damage }),
                 'shoot-live',
                 '💥'
             );
         }
 
-        showMessage(ShotMessages.live[key](damage));
+        // Show message based on who shot whom
+        if (shooter === 'player' && target === 'dealer') {
+            showMessage(t('event.liveHitDealer', { damage }));
+        } else if (shooter === 'player' && target === 'player') {
+            showMessage(t('event.liveHitPlayer', { damage }));
+        } else if (shooter === 'dealer' && target === 'player') {
+            showMessage(t('event.dealerShotPlayer', { damage }));
+        } else {
+            showMessage(t('event.dealerShotSelf', { damage }));
+        }
     } else {
         playBlankShot();
 
-        const shooterText = shooter === 'player' ? '你' : '庄家';
-        const targetText = target === 'player' ? '你' : '庄家';
+        const shooterName = getActorName(shooter);
+        const targetName = getActorName(target);
 
         EventLog.add(
-            `${shooterText}射${targetText} — ⚪ 空弹`,
+            `${shooterName}${t('event.blankShot')}${targetName === t('actor.you') ? '' : ' ' + targetName}`,
             'shoot-blank',
             '💨'
         );
 
-        showMessage(ShotMessages.blank[key] || ShotMessages.blank._default);
+        // Show appropriate blank message
+        if (shooter === target && shooter === 'player') {
+            showMessage(t('event.blankShotSelfContinue'));
+        } else if (shooter === target && shooter === 'dealer') {
+            showMessage(t('event.blankShotDealerContinue'));
+        } else {
+            showMessage(t('event.blankShot'));
+        }
     }
 
     gameData.shotgun.sawedOff = false;
@@ -562,15 +595,14 @@ function resolveAfterShot(shooter, target, shellType) {
     }
     if (gameData.dealer.hp <= 0) {
         if (gameData.donRound) {
-            // DoN won — show victory with DoN round count
             gameData.state = GameState.VICTORY;
             stopBGMusic();
             playVictory();
             animateVictory();
             setSceneMood('victory');
-            EventLog.add(`🎰 Double or Nothing — 第${gameData.donRound}轮胜利！`, 'victory', '🏆');
-            document.getElementById('game-over-title').textContent = '赢了赌局！';
-            document.getElementById('game-over-message').textContent = `Double or Nothing 连胜 ${gameData.donRound} 轮！`;
+            EventLog.add(t('don.win', { round: gameData.donRound }), 'victory', '🏆');
+            document.getElementById('game-over-title').textContent = t('gameOver.donWin');
+            document.getElementById('game-over-message').textContent = t('gameOver.donWinMsg', { round: gameData.donRound });
             document.getElementById('don-btn').style.display = 'block';
             document.getElementById('game-over').classList.remove('hidden');
             return;
@@ -581,7 +613,6 @@ function resolveAfterShot(shooter, target, shellType) {
     // Priority 2: Shells spent
     if (gameData.shotgun.currentIndex >= gameData.shotgun.shells.length) {
         if (gameData.donRound) {
-            // Both survived DoN round — re-load and continue
             startDoubleOrNothing();
             return;
         }
@@ -598,7 +629,7 @@ function switchTurn(shooter, target, shellType) {
     // Blank + shot self → keep turn
     if (shellType === 'blank' && shotSelf) {
         setTurn(shooter);
-        const text = shooter === 'player' ? '你的回合继续' : '庄家的回合继续';
+        const text = shooter === 'player' ? t('event.continueTurn') : t('event.dealerContinue');
         EventLog.add(text, 'turn-change', '↪️');
         return;
     }
@@ -611,15 +642,15 @@ function switchTurn(shooter, target, shellType) {
         opponentData.handcuffed = false;
         setTurn(shooter);
         const msg = shooter === 'player'
-            ? '庄家被铐住了！你的回合继续'
-            : '你被铐住了！庄家继续行动';
+            ? t('event.handcuffed')
+            : t('event.playerHandcuffed');
         EventLog.add(msg, 'turn-change', '⛓️');
         flashMessage(msg, DELAY.MESSAGE);
         return;
     }
 
     setTurn(opponent);
-    const text = opponent === 'player' ? '你的回合' : '庄家的回合';
+    const text = opponent === 'player' ? t('event.yourTurn') : t('event.dealerTurn');
     EventLog.add(text, 'turn-change', opponent === 'player' ? '👤' : '🎭');
 }
 
@@ -664,21 +695,22 @@ function useItem(item, user) {
     playItemUse();
     animateItemUse(item.id);
 
-    const userName = isPlayer ? '你' : '庄家';
+    const userName = getActorName(user);
+    const itemName = t(`item.${item.id}.name`);
     let itemAchievementData = { itemId: item.id, success: true, ejected: null };
 
     switch (item.id) {
         case 'magnifying_glass':
             if (gameData.shotgun.currentIndex < gameData.shotgun.shells.length) {
                 const shell = gameData.shotgun.shells[gameData.shotgun.currentIndex];
-                const shellText = shell === 'live' ? '🔴 实弹' : '⚪ 空弹';
+                const shellText = getShellText(shell);
                 EventLog.add(
-                    `${userName}使用 🔍 — 当前子弹是${shellText}`,
+                    t('itemMsg.magnifying_glass', { shell: shellText }),
                     'item-use',
                     '🔍'
                 );
                 if (isPlayer) {
-                    showMessage(`当前子弹：${shellText}`);
+                    showMessage(t('itemMsg.magnifying_glass_show', { shell: shellText }));
                     setTimeout(hideMessage, DELAY.MESSAGE);
                 }
             }
@@ -690,20 +722,20 @@ function useItem(item, user) {
                 itemAchievementData.ejected = ejected;
                 gameData.shotgun.currentIndex++;
                 updateShellInfo();
-                const shellText = ejected === 'live' ? '🔴 实弹' : '⚪ 空弹';
+                const shellText = getShellText(ejected);
                 EventLog.add(
-                    `${userName}使用 🍺 — 退出了${shellText}`,
+                    t('itemMsg.beer', { shell: shellText }),
                     'item-use',
                     '🍺'
                 );
                 if (gameData.shotgun.currentIndex >= gameData.shotgun.shells.length) {
-                    showMessage(`退弹：${shellText} — 重新装填...`);
+                    showMessage(t('itemMsg.beer_show', { shell: shellText }));
                     setTimeout(() => { hideMessage(); startRound(); }, DELAY.MESSAGE);
                 } else if (isPlayer) {
-                    showMessage(`退弹：${shellText}`);
+                    showMessage(t('itemMsg.beer_showShort', { shell: shellText }));
                     setTimeout(hideMessage, DELAY.MESSAGE);
                 } else {
-                    showMessage('庄家退出一发子弹');
+                    showMessage(t('itemMsg.beer_dealer'));
                     setTimeout(hideMessage, DELAY.MESSAGE);
                 }
             }
@@ -712,35 +744,35 @@ function useItem(item, user) {
         case 'handsaw':
             gameData.shotgun.sawedOff = true;
             EventLog.add(
-                `${userName}使用 🪚 — 下次射击伤害翻倍`,
+                t('itemMsg.handsaw'),
                 'item-use',
                 '🪚'
             );
-            if (isPlayer) { showMessage('锯短了！下次双倍伤害！'); setTimeout(hideMessage, DELAY.MESSAGE); }
-            else { showMessage('庄家锯短了霰弹枪！'); setTimeout(hideMessage, DELAY.MESSAGE); }
+            if (isPlayer) { showMessage(t('itemMsg.handsaw_show')); setTimeout(hideMessage, DELAY.MESSAGE); }
+            else { showMessage(t('itemMsg.handsaw_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             break;
 
         case 'cigarette':
             userData.hp = Math.min(userData.hp + 1, userData.maxHp);
             EventLog.add(
-                `${userName}使用 🚬 — 恢复1点生命`,
+                t('itemMsg.cigarette'),
                 'item-use',
                 '🚬'
             );
-            if (isPlayer) { showMessage('生命恢复！'); setTimeout(hideMessage, DELAY.MESSAGE); }
-            else { showMessage('庄家抽了一支烟'); setTimeout(hideMessage, DELAY.MESSAGE); }
+            if (isPlayer) { showMessage(t('itemMsg.cigarette_show')); setTimeout(hideMessage, DELAY.MESSAGE); }
+            else { showMessage(t('itemMsg.cigarette_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             break;
 
         case 'handcuffs': {
             const opponent = isPlayer ? gameData.dealer : gameData.player;
             opponent.handcuffed = true;
             EventLog.add(
-                `${userName}使用 ⛓️ — 对手跳过下一回合`,
+                t('itemMsg.handcuffs'),
                 'item-use',
                 '⛓️'
             );
-            if (isPlayer) { showMessage('庄家被铐住了！'); setTimeout(hideMessage, DELAY.MESSAGE); }
-            else { showMessage('庄家给你铐上了手铐！'); setTimeout(hideMessage, DELAY.MESSAGE); }
+            if (isPlayer) { showMessage(t('itemMsg.handcuffs_show')); setTimeout(hideMessage, DELAY.MESSAGE); }
+            else { showMessage(t('itemMsg.handcuffs_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             break;
         }
 
@@ -750,21 +782,21 @@ function useItem(item, user) {
             if (lucky) {
                 userData.hp = Math.min(userData.hp + 2, userData.maxHp);
                 EventLog.add(
-                    `${userName}使用 💊 — 幸运！恢复2点生命`,
+                    t('itemMsg.medicine_good'),
                     'item-use',
                     '💊'
                 );
-                if (isPlayer) { showMessage('💊 幸运！恢复2点生命！'); setTimeout(hideMessage, DELAY.MESSAGE); }
-                else { showMessage('庄家吃了药...恢复2点生命'); setTimeout(hideMessage, DELAY.MESSAGE); }
+                if (isPlayer) { showMessage(t('itemMsg.medicine_good_show')); setTimeout(hideMessage, DELAY.MESSAGE); }
+                else { showMessage(t('itemMsg.medicine_good_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             } else {
                 userData.hp = Math.max(userData.hp - 1, 0);
                 EventLog.add(
-                    `${userName}使用 💊 — 副作用！扣1点生命`,
+                    t('itemMsg.medicine_bad'),
                     'item-use',
                     '💊'
                 );
-                if (isPlayer) { showMessage('💊 副作用！扣1点生命'); setTimeout(hideMessage, DELAY.MESSAGE); }
-                else { showMessage('庄家吃了药...扣1点生命'); setTimeout(hideMessage, DELAY.MESSAGE); }
+                if (isPlayer) { showMessage(t('itemMsg.medicine_bad_show')); setTimeout(hideMessage, DELAY.MESSAGE); }
+                else { showMessage(t('itemMsg.medicine_bad_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             }
             break;
         }
@@ -774,59 +806,52 @@ function useItem(item, user) {
                 const current = gameData.shotgun.shells[gameData.shotgun.currentIndex];
                 const inverted = current === 'live' ? 'blank' : 'live';
                 gameData.shotgun.shells[gameData.shotgun.currentIndex] = inverted;
-                const fromText = current === 'live' ? '🔴 实弹' : '⚪ 空弹';
-                const toText = inverted === 'live' ? '🔴 实弹' : '⚪ 空弹';
-                // Update AI knowledge if it knew the shell
+                const fromText = getShellText(current);
+                const toText = getShellText(inverted);
                 if (gameData.aiKnownShell === current) {
                     gameData.aiKnownShell = inverted;
                 }
                 updateShellInfo();
                 EventLog.add(
-                    `${userName}使用 🔄 — ${fromText} → ${toText}`,
+                    t('itemMsg.inverter', { from: fromText, to: toText }),
                     'item-use',
                     '🔄'
                 );
-                if (isPlayer) { showMessage(`🔄 反转！${fromText} → ${toText}`); setTimeout(hideMessage, DELAY.MESSAGE); }
-                else { showMessage('庄家使用了逆转器！'); setTimeout(hideMessage, DELAY.MESSAGE); }
+                if (isPlayer) { showMessage(t('itemMsg.inverter_show', { from: fromText, to: toText })); setTimeout(hideMessage, DELAY.MESSAGE); }
+                else { showMessage(t('itemMsg.inverter_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             }
             break;
 
         case 'burner_phone':
             if (gameData.shotgun.currentIndex < gameData.shotgun.shells.length - 1) {
                 const remaining = gameData.shotgun.shells.slice(gameData.shotgun.currentIndex + 1);
-                const liveIndices = [];
-                remaining.forEach((s, i) => { if (s === 'live') liveIndices.push(i); });
-                const blankIndices = [];
-                remaining.forEach((s, i) => { if (s === 'blank') blankIndices.push(i); });
-
-                // Pick a random remaining shell to reveal
                 const allIndices = [];
                 remaining.forEach((s, i) => allIndices.push(i));
                 const revealIdx = allIndices[Math.floor(Math.random() * allIndices.length)];
                 const revealedShell = remaining[revealIdx];
-                const revealedPos = revealIdx + 1; // Position relative to current
-                const shellText = revealedShell === 'live' ? '🔴 实弹' : '⚪ 空弹';
+                const revealedPos = revealIdx + 1;
+                const shellText = getShellText(revealedShell);
 
                 EventLog.add(
-                    `${userName}使用 📱 — 第${revealedPos}发之后是${shellText}`,
+                    t('itemMsg.burner_phone', { pos: revealedPos, shell: shellText }),
                     'item-use',
                     '📱'
                 );
                 if (isPlayer) {
-                    showMessage(`📱 第${revealedPos}发之后：${shellText}`);
+                    showMessage(t('itemMsg.burner_phone_show', { pos: revealedPos, shell: shellText }));
                     setTimeout(hideMessage, DELAY.MESSAGE);
                 } else {
-                    showMessage('庄家打了个电话...');
+                    showMessage(t('itemMsg.burner_phone_dealer'));
                     setTimeout(hideMessage, DELAY.MESSAGE);
                 }
             } else {
                 EventLog.add(
-                    `${userName}使用 📱 — 没有更多子弹可查询`,
+                    t('itemMsg.burner_phone_empty'),
                     'item-use',
                     '📱'
                 );
-                if (isPlayer) { showMessage('📱 没有更多子弹了'); setTimeout(hideMessage, DELAY.MESSAGE); }
-                else { showMessage('庄家打了个电话...'); setTimeout(hideMessage, DELAY.MESSAGE); }
+                if (isPlayer) { showMessage(t('itemMsg.burner_phone_empty_show')); setTimeout(hideMessage, DELAY.MESSAGE); }
+                else { showMessage(t('itemMsg.burner_phone_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             }
             break;
 
@@ -836,35 +861,32 @@ function useItem(item, user) {
                 const stolenIdx = Math.floor(Math.random() * opponent.items.length);
                 const stolenItem = opponent.items[stolenIdx];
                 opponent.items.splice(stolenIdx, 1);
-                // Use the stolen item immediately (as the user)
-                const opponentName = isPlayer ? '庄家' : '你';
+                const opponentName = isPlayer ? t('actor.dealer') : t('actor.you');
+                const stolenItemName = t(`item.${stolenItem.id}.name`);
                 EventLog.add(
-                    `${userName}使用 💉 — 偷走了${opponentName}的${stolenItem.name}！`,
+                    t('itemMsg.adrenaline', { target: opponentName, item: stolenItemName }),
                     'item-use',
                     '💉'
                 );
-                if (isPlayer) { showMessage(`💉 偷取了${opponentName}的${stolenItem.name}！`); setTimeout(hideMessage, DELAY.MESSAGE); }
-                else { showMessage(`庄家偷走了你的${stolenItem.name}！`); setTimeout(hideMessage, DELAY.MESSAGE); }
-                // Immediately use the stolen item (but don't recurse with adrenaline)
+                if (isPlayer) { showMessage(t('itemMsg.adrenaline_show', { target: opponentName, item: stolenItemName })); setTimeout(hideMessage, DELAY.MESSAGE); }
+                else { showMessage(t('itemMsg.adrenaline_dealer', { item: stolenItemName })); setTimeout(hideMessage, DELAY.MESSAGE); }
                 if (stolenItem.id !== 'adrenaline') {
                     setTimeout(() => useItem(stolenItem, user), DELAY.MESSAGE);
                 }
             } else {
                 EventLog.add(
-                    `${userName}使用 💉 — 对手没有道具可偷`,
+                    t('itemMsg.adrenaline_empty'),
                     'item-use',
                     '💉'
                 );
-                if (isPlayer) { showMessage('💉 对手没有道具！'); setTimeout(hideMessage, DELAY.MESSAGE); }
-                else { showMessage('庄家使用了肾上腺素...但没东西可偷'); setTimeout(hideMessage, DELAY.MESSAGE); }
+                if (isPlayer) { showMessage(t('itemMsg.adrenaline_empty_show')); setTimeout(hideMessage, DELAY.MESSAGE); }
+                else { showMessage(t('itemMsg.adrenaline_empty_dealer')); setTimeout(hideMessage, DELAY.MESSAGE); }
             }
             break;
         }
     }
 
-    // Achievement check for item use
     checkAchievements('item_used', itemAchievementData);
-
     updateUI();
 
     // Check if expired medicine killed someone
@@ -895,7 +917,7 @@ async function nextStage() {
     gameData.dealer.handcuffed = false;
 
     EventLog.add(
-        `进入阶段 ${gameData.stage}！生命值设为 ${config.hp}`,
+        t('stage.enter', { stage: gameData.stage, hp: config.hp }),
         'stage',
         '⏫'
     );
@@ -903,7 +925,7 @@ async function nextStage() {
     animateStageTransition(gameData.stage);
     setSceneMood('tense');
 
-    await flashMessage(`阶段 ${gameData.stage}！生命值：${config.hp}`, DELAY.ROUND_START);
+    await flashMessage(t('stage.flash', { stage: gameData.stage, hp: config.hp }), DELAY.ROUND_START);
     startRound();
 }
 
@@ -920,17 +942,16 @@ function endGame(victory) {
     });
 
     EventLog.add(
-        victory ? '🎉 胜利！你通过了全部3个阶段！' : `💀 游戏结束 — 阶段 ${gameData.stage}`,
+        victory ? t('stage.victory') : t('stage.defeat', { stage: gameData.stage }),
         victory ? 'victory' : 'death',
         victory ? '🏆' : '💀'
     );
 
-    document.getElementById('game-over-title').textContent = victory ? '胜利！' : '游戏结束';
+    document.getElementById('game-over-title').textContent = victory ? t('gameOver.victory') : t('gameOver.defeat');
     document.getElementById('game-over-message').textContent = victory
-        ? '你通过了全部3个阶段！'
-        : `你在第 ${gameData.stage} 阶段倒下了`;
+        ? t('gameOver.victoryMsg')
+        : t('gameOver.defeatMsg', { stage: gameData.stage });
 
-    // Show/hide Double or Nothing button
     const donBtn = document.getElementById('don-btn');
     if (donBtn) donBtn.style.display = victory ? 'block' : 'none';
 
@@ -945,18 +966,16 @@ async function startDoubleOrNothing() {
     gameData.state = GameState.ROUND_START;
 
     EventLog.add(
-        `🎰 Double or Nothing！第 ${gameData.donRound} 轮`,
+        t('don.round', { round: gameData.donRound }),
         'stage',
         '🎰'
     );
 
-    // Only 1 live and 1 blank in DoN — pure 50/50
     const shells = ['live', 'blank'].sort(() => Math.random() - 0.5);
     gameData.shotgun = { shells, currentIndex: 0, sawedOff: false };
     gameData.shellInfo = { live: 1, blank: 1 };
     gameData.aiKnownShell = null;
 
-    // No items in DoN
     gameData.player.items = [];
     gameData.dealer.items = [];
     gameData.player.handcuffed = false;
@@ -966,7 +985,7 @@ async function startDoubleOrNothing() {
     animateRoundStart();
     animateShellReload();
 
-    await flashMessage(`Double or Nothing！1实弹 vs 1空弹`, DELAY.ROUND_START);
+    await flashMessage(t('don.flash'), DELAY.ROUND_START);
 
     gameData.state = GameState.PLAYER_TURN;
     updateUI();
@@ -979,10 +998,10 @@ function donLost() {
     animateDefeat();
     setSceneMood('defeat');
 
-    EventLog.add('🎰 Double or Nothing — 失败！一切归零', 'death', '💀');
+    EventLog.add(t('don.lose'), 'death', '💀');
 
-    document.getElementById('game-over-title').textContent = '赌输了！';
-    document.getElementById('game-over-message').textContent = 'Double or Nothing 失败，一切归零...';
+    document.getElementById('game-over-title').textContent = t('gameOver.donLose');
+    document.getElementById('game-over-message').textContent = t('gameOver.donLoseMsg');
     document.getElementById('don-btn').style.display = 'none';
     document.getElementById('game-over').classList.remove('hidden');
 }
@@ -997,11 +1016,9 @@ function updateUI() {
     document.getElementById('live-count').textContent = gameData.shellInfo.live;
     document.getElementById('blank-count').textContent = gameData.shellInfo.blank;
 
-    // Stage display
     const stageEl = document.getElementById('stage-num');
     if (stageEl) stageEl.textContent = gameData.stage;
 
-    // Turn indicator
     const playerInfo = document.getElementById('player-info');
     const dealerInfo = document.getElementById('dealer-info');
     playerInfo.classList.toggle('active-turn', gameData.state === GameState.PLAYER_TURN);
@@ -1013,7 +1030,9 @@ function updateUI() {
     gameData.player.items.forEach((item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
-        card.innerHTML = `${item.name}<div class="item-name">${item.desc}</div>`;
+        const name = t(`item.${item.id}.name`);
+        const desc = t(`item.${item.id}.desc`);
+        card.innerHTML = `${name}<div class="item-name">${desc}</div>`;
         card.onclick = () => useItem(item, 'player');
         playerItems.appendChild(card);
     });

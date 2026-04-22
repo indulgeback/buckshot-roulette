@@ -1,5 +1,7 @@
 // ====== Achievement System ======
 
+import { t } from './i18n.js';
+
 const STORAGE_KEY = 'buckshot_roulette_achievements';
 
 const AchievementCategory = {
@@ -14,113 +16,113 @@ const AchievementCategory = {
 const Achievements = {
     // === COMBAT ===
     FIRST_BLOOD: {
-        id: 'first_blood', name: '初次流血', desc: '第一次命中对手',
+        id: 'firstBlood', nameKey: 'achievement.firstBlood.name', descKey: 'achievement.firstBlood.desc',
         icon: '🩸', category: AchievementCategory.COMBAT, hidden: false
     },
     SHARPSHOOTER: {
-        id: 'sharpshooter', name: '神枪手', desc: '连续3发实弹全部命中',
+        id: 'sharpshooter', nameKey: 'achievement.sharpshooter.name', descKey: 'achievement.sharpshooter.desc',
         icon: '🎯', category: AchievementCategory.COMBAT, hidden: false
     },
     DOUBLE_TAP: {
-        id: 'double_tap', name: '双重打击', desc: '使用手锯后命中对手',
+        id: 'doubleTap', nameKey: 'achievement.doubleTap.name', descKey: 'achievement.doubleTap.desc',
         icon: '🪚', category: AchievementCategory.COMBAT, hidden: false
     },
     BLUFF_MASTER: {
-        id: 'bluff_master', name: '虚张声势', desc: '实弹概率超过75%时射自己且是空弹',
+        id: 'bluff', nameKey: 'achievement.bluff.name', descKey: 'achievement.bluff.desc',
         icon: '🃏', category: AchievementCategory.COMBAT, hidden: false
     },
     DEALER_SLAYER: {
-        id: 'dealer_slayer', name: '恶魔猎手', desc: '使用手锯一枪击杀庄家',
+        id: 'demonHunter', nameKey: 'achievement.demonHunter.name', descKey: 'achievement.demonHunter.desc',
         icon: '💀', category: AchievementCategory.COMBAT, hidden: false
     },
 
     // === SURVIVAL ===
     COMEBACK_KING: {
-        id: 'comeback_king', name: '绝地反击', desc: '在只剩1点生命时赢得游戏',
+        id: 'comeback', nameKey: 'achievement.comeback.name', descKey: 'achievement.comeback.desc',
         icon: '👑', category: AchievementCategory.SURVIVAL, hidden: false
     },
     UNTOUCHABLE: {
-        id: 'untouchable', name: '不可触碰', desc: '完成整场游戏未受任何伤害',
+        id: 'untouchable', nameKey: 'achievement.untouchable.name', descKey: 'achievement.untouchable.desc',
         icon: '🛡️', category: AchievementCategory.SURVIVAL, hidden: false
     },
     RISK_TAKER: {
-        id: 'risk_taker', name: '赌徒', desc: '使用过期药物且成功恢复',
+        id: 'gambler', nameKey: 'achievement.gambler.name', descKey: 'achievement.gambler.desc',
         icon: '💊', category: AchievementCategory.SURVIVAL, hidden: false
     },
     SURVIVOR: {
-        id: 'survivor', name: '幸存者', desc: '累计使用香烟恢复10次',
+        id: 'survivor', nameKey: 'achievement.survivor.name', descKey: 'achievement.survivor.desc',
         icon: '🚬', category: AchievementCategory.SURVIVAL, hidden: false
     },
 
     // === ITEMS ===
     KNOWLEDGE_IS_POWER: {
-        id: 'knowledge_is_power', name: '知识就是力量', desc: '使用放大镜后根据信息做出正确决定',
+        id: 'knowledge', nameKey: 'achievement.knowledge.name', descKey: 'achievement.knowledge.desc',
         icon: '🔍', category: AchievementCategory.ITEMS, hidden: false
     },
     BOTTOMS_UP: {
-        id: 'bottoms_up', name: '一饮而尽', desc: '使用啤酒退出实弹',
+        id: 'bottomsUp', nameKey: 'achievement.bottomsUp.name', descKey: 'achievement.bottomsUp.desc',
         icon: '🍺', category: AchievementCategory.ITEMS, hidden: false
     },
     ITEM_COLLECTOR: {
-        id: 'item_collector', name: '道具收藏家', desc: '在单场游戏中使用所有6种道具',
+        id: 'collector', nameKey: 'achievement.collector.name', descKey: 'achievement.collector.desc',
         icon: '🎒', category: AchievementCategory.ITEMS, hidden: false
     },
     CHAIN_MASTER: {
-        id: 'chain_master', name: '锁链大师', desc: '累计成功使用手铐3次',
+        id: 'chainMaster', nameKey: 'achievement.chainMaster.name', descKey: 'achievement.chainMaster.desc',
         icon: '⛓️', category: AchievementCategory.ITEMS, hidden: false
     },
     SAW_SURGEON: {
-        id: 'saw_surgeon', name: '锯子外科医生', desc: '使用手锯命中对手3次',
+        id: 'surgeon', nameKey: 'achievement.surgeon.name', descKey: 'achievement.surgeon.desc',
         icon: '🪚', category: AchievementCategory.ITEMS, hidden: false
     },
 
     // === STAGES ===
     STAGE_1_CLEAR: {
-        id: 'stage_1_clear', name: '初试身手', desc: '通过阶段1',
+        id: 'stage1', nameKey: 'achievement.stage1.name', descKey: 'achievement.stage1.desc',
         icon: '⭐', category: AchievementCategory.STAGES, hidden: false
     },
     STAGE_2_CLEAR: {
-        id: 'stage_2_clear', name: '越来越难', desc: '通过阶段2',
+        id: 'stage2', nameKey: 'achievement.stage2.name', descKey: 'achievement.stage2.desc',
         icon: '⭐', category: AchievementCategory.STAGES, hidden: false
     },
     STAGE_3_CLEAR: {
-        id: 'stage_3_clear', name: '最终胜利', desc: '通过阶段3，赢得游戏',
+        id: 'stage3', nameKey: 'achievement.stage3.name', descKey: 'achievement.stage3.desc',
         icon: '🏆', category: AchievementCategory.STAGES, hidden: false
     },
     SPEED_RUN: {
-        id: 'speed_run', name: '速通大师', desc: '在5回合内完成一个阶段',
+        id: 'speedrun', nameKey: 'achievement.speedrun.name', descKey: 'achievement.speedrun.desc',
         icon: '⚡', category: AchievementCategory.STAGES, hidden: false
     },
 
     // === META ===
     FIRST_GAME: {
-        id: 'first_game', name: '初次登场', desc: '完成第一场游戏',
+        id: 'firstGame', nameKey: 'achievement.firstGame.name', descKey: 'achievement.firstGame.desc',
         icon: '🎮', category: AchievementCategory.META, hidden: false
     },
     VETERAN: {
-        id: 'veteran', name: '老练玩家', desc: '完成10场游戏',
+        id: 'veteran', nameKey: 'achievement.veteran.name', descKey: 'achievement.veteran.desc',
         icon: '🎖️', category: AchievementCategory.META, hidden: false
     },
     WIN_STREAK_3: {
-        id: 'win_streak_3', name: '三连胜', desc: '连续赢得3场游戏',
+        id: 'winStreak3', nameKey: 'achievement.winStreak3.name', descKey: 'achievement.winStreak3.desc',
         icon: '🔥', category: AchievementCategory.META, hidden: false
     },
     TOTAL_WINS_5: {
-        id: 'total_wins_5', name: '常胜将军', desc: '累计赢得5场游戏',
+        id: 'winStreak5', nameKey: 'achievement.winStreak5.name', descKey: 'achievement.winStreak5.desc',
         icon: '🏆', category: AchievementCategory.META, hidden: false
     },
 
     // === SPECIAL / HIDDEN ===
     SELF_SHOT_BLANK_3: {
-        id: 'self_shot_blank_3', name: '自射达人', desc: '单局游戏射自己空弹3次',
+        id: 'selfShot', nameKey: 'achievement.selfShot.name', descKey: 'achievement.selfShot.desc',
         icon: '🤪', category: AchievementCategory.SPECIAL, hidden: true
     },
     MEDICINE_FAIL: {
-        id: 'medicine_fail', name: '药不对症', desc: '使用过期药物副作用致死',
+        id: 'medicineDeath', nameKey: 'achievement.medicineDeath.name', descKey: 'achievement.medicineDeath.desc',
         icon: '☠️', category: AchievementCategory.SPECIAL, hidden: true
     },
     PERFECT_GAME: {
-        id: 'perfect_game', name: '完美游戏', desc: '不使用任何道具赢得整场游戏',
+        id: 'perfectGame', nameKey: 'achievement.perfectGame.name', descKey: 'achievement.perfectGame.desc',
         icon: '✨', category: AchievementCategory.SPECIAL, hidden: true
     },
 };
@@ -337,8 +339,8 @@ function processNotificationQueue() {
     toast.innerHTML = `
         <div class="achievement-toast-icon">${ach.icon}</div>
         <div class="achievement-toast-text">
-            <div class="achievement-toast-label">成就解锁！</div>
-            <div class="achievement-toast-name">${ach.name}</div>
+            <div class="achievement-toast-label">${t('achievement.unlock')}</div>
+            <div class="achievement-toast-name">${t(ach.nameKey)}</div>
         </div>
     `;
     container.appendChild(toast);
@@ -386,12 +388,12 @@ export function renderAchievementGallery() {
     if (!gallery) return;
 
     const categories = [
-        { key: AchievementCategory.COMBAT, name: '⚔️ 战斗' },
-        { key: AchievementCategory.SURVIVAL, name: '🛡️ 生存' },
-        { key: AchievementCategory.ITEMS, name: '🎒 道具' },
-        { key: AchievementCategory.STAGES, name: '⭐ 阶段' },
-        { key: AchievementCategory.META, name: '📊 统计' },
-        { key: AchievementCategory.SPECIAL, name: '❓ 特殊' },
+        { key: AchievementCategory.COMBAT, nameKey: 'achievement.category.combat' },
+        { key: AchievementCategory.SURVIVAL, nameKey: 'achievement.category.survival' },
+        { key: AchievementCategory.ITEMS, nameKey: 'achievement.category.items' },
+        { key: AchievementCategory.STAGES, nameKey: 'achievement.category.stages' },
+        { key: AchievementCategory.META, nameKey: 'achievement.category.stats' },
+        { key: AchievementCategory.SPECIAL, nameKey: 'achievement.category.special' },
     ];
 
     let html = '';
@@ -400,7 +402,7 @@ export function renderAchievementGallery() {
     const total = Object.keys(Achievements).length;
     const unlocked = Object.keys(persistentStats.unlocked).length;
     html += `<div class="achievement-stats">
-        <span>已解锁: ${unlocked} / ${total}</span>
+        <span>${t('achievement.unlocked', { unlocked, total })}</span>
         <div class="achievement-progress-bar">
             <div class="achievement-progress-fill" style="width: ${(unlocked / total) * 100}%"></div>
         </div>
@@ -411,7 +413,7 @@ export function renderAchievementGallery() {
         const catUnlocked = catAchievements.filter(a => persistentStats.unlocked[a.id]).length;
 
         html += `<div class="achievement-category">
-            <div class="achievement-category-header">${cat.name} (${catUnlocked}/${catAchievements.length})</div>
+            <div class="achievement-category-header">${t(cat.nameKey)} (${catUnlocked}/${catAchievements.length})</div>
             <div class="achievement-grid">`;
 
         for (const ach of catAchievements) {
@@ -421,8 +423,8 @@ export function renderAchievementGallery() {
             html += `<div class="achievement-card ${isUnlocked ? 'unlocked' : 'locked'}">
                 <div class="achievement-icon">${isHidden ? '❓' : ach.icon}</div>
                 <div class="achievement-info">
-                    <div class="achievement-name">${isHidden ? '???' : ach.name}</div>
-                    <div class="achievement-desc">${isHidden ? '隐藏成就' : ach.desc}</div>
+                    <div class="achievement-name">${isHidden ? '???' : t(ach.nameKey)}</div>
+                    <div class="achievement-desc">${isHidden ? t('achievement.hidden') : t(ach.descKey)}</div>
                 </div>
             </div>`;
         }
