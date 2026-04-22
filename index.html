@@ -20,7 +20,7 @@
         <div id="ui-overlay">
         <!-- Top Bar: stage-info + shell-info + dealer-info -->
         <div id="top-bar">
-            <div id="stage-info">阶段 <span id="stage-num">1</span> <button id="pause-btn" class="topbar-btn" title="菜单">⏸</button> <button id="debug-toggle" class="debug-toggle">🔧</button> <button id="achievement-toggle" class="achievement-toggle" title="成就">🏆</button></div>
+            <div id="stage-info"><span data-i18n="ui.stage">阶段</span> <span id="stage-num">1</span> <button id="pause-btn" class="topbar-btn" data-i18n-attr="title" data-i18n="ui.pauseTooltip" title="菜单">⏸</button> <button id="debug-toggle" class="debug-toggle">🔧</button> <button id="achievement-toggle" class="achievement-toggle" data-i18n-attr="title" data-i18n="ui.achievementTooltip" title="成就">🏆</button></div>
             <div id="shell-info">
                 <div class="shell-count">
                     <span class="live-shell">🔴 <span id="live-count">0</span></span>
@@ -29,7 +29,7 @@
             </div>
             <div id="dealer-info" class="player-info">
                 <div class="hp-display">
-                    <span class="label">庄家生命:</span>
+                    <span class="label" data-i18n="ui.dealerHp">庄家生命:</span>
                     <span id="dealer-hp" class="hp-icons"></span>
                 </div>
                 <div id="dealer-items" class="items-container"></div>
@@ -38,9 +38,9 @@
 
         <!-- Right Sidebar: event log -->
         <div id="right-sidebar">
-            <button id="event-log-toggle" class="event-log-toggle" title="对局记录">📜</button>
+            <button id="event-log-toggle" class="event-log-toggle" data-i18n-attr="title" data-i18n="ui.eventLogTooltip" title="对局记录">📜</button>
             <div id="event-log" class="event-log">
-                <div class="event-log-header">📜 对局记录</div>
+                <div class="event-log-header" data-i18n="ui.eventLog">📜 对局记录</div>
                 <div id="event-log-content" class="event-log-content"></div>
             </div>
         </div>
@@ -49,14 +49,14 @@
         <div id="bottom-bar">
             <div id="player-info" class="player-info">
                 <div class="hp-display">
-                    <span class="label">玩家生命:</span>
+                    <span class="label" data-i18n="ui.playerHp">玩家生命:</span>
                     <span id="player-hp" class="hp-icons"></span>
                 </div>
                 <div id="player-items" class="items-container"></div>
             </div>
             <div id="action-buttons">
-                <button id="shoot-self-btn" class="action-btn">射自己</button>
-                <button id="shoot-dealer-btn" class="action-btn">射庄家</button>
+                <button id="shoot-self-btn" class="action-btn" data-i18n="ui.shootSelf">射自己</button>
+                <button id="shoot-dealer-btn" class="action-btn" data-i18n="ui.shootDealer">射庄家</button>
             </div>
         </div>
 
@@ -69,7 +69,7 @@
         <!-- Achievement Gallery Panel -->
         <div id="achievement-panel" class="achievement-panel hidden">
             <div class="achievement-panel-header">
-                <span>🏆 成就</span>
+                <span data-i18n="ui.achievementPanelTitle">🏆 成就</span>
                 <span id="achievement-counter">0/25</span>
                 <button id="achievement-close" class="achievement-close">&times;</button>
             </div>
@@ -79,58 +79,65 @@
         <!-- Modals / Full-screen Overlays -->
         <div id="debug-panel" class="debug-panel hidden">
                 <div class="debug-header">
-                    <span>🔧 调试面板</span>
+                    <span data-i18n="ui.debugPanel">🔧 调试面板</span>
                     <button id="debug-close" class="debug-close">×</button>
                 </div>
                 <div class="debug-content">
                     <div class="debug-section">
-                        <label>阶段切换:</label>
+                        <label data-i18n="debug.stageSwitch">阶段切换:</label>
                         <div class="debug-buttons">
-                            <button class="debug-btn" data-stage="1">阶段 1</button>
-                            <button class="debug-btn" data-stage="2">阶段 2</button>
-                            <button class="debug-btn" data-stage="3">阶段 3</button>
+                            <button class="debug-btn" data-stage="1" data-i18n="debug.switchStage" data-i18n-vars='{"n":"1"}'>阶段 1</button>
+                            <button class="debug-btn" data-stage="2" data-i18n="debug.switchStage" data-i18n-vars='{"n":"2"}'>阶段 2</button>
+                            <button class="debug-btn" data-stage="3" data-i18n="debug.switchStage" data-i18n-vars='{"n":"3"}'>阶段 3</button>
                         </div>
                     </div>
                     <div class="debug-section">
-                        <label>生命调整:</label>
+                        <label data-i18n="debug.hpAdjust">生命调整:</label>
                         <div class="debug-buttons">
-                            <button class="debug-btn" data-hp="heal-player">+玩家生命</button>
-                            <button class="debug-btn" data-hp="hurt-player">-玩家生命</button>
-                            <button class="debug-btn" data-hp="heal-dealer">+庄家生命</button>
-                            <button class="debug-btn" data-hp="hurt-dealer">-庄家生命</button>
+                            <button class="debug-btn" data-hp="heal-player" data-i18n="debug.healPlayer">+玩家生命</button>
+                            <button class="debug-btn" data-hp="hurt-player" data-i18n="debug.hurtPlayer">-玩家生命</button>
+                            <button class="debug-btn" data-hp="heal-dealer" data-i18n="debug.healDealer">+庄家生命</button>
+                            <button class="debug-btn" data-hp="hurt-dealer" data-i18n="debug.hurtDealer">-庄家生命</button>
                         </div>
                     </div>
                     <div class="debug-section">
-                        <label>道具管理:</label>
+                        <label data-i18n="debug.itemManage">道具管理:</label>
                         <div class="debug-buttons">
-                            <button class="debug-btn" data-item="random">随机道具</button>
-                            <button class="debug-btn" data-item="clear">清空道具</button>
+                            <button class="debug-btn" data-item="random" data-i18n="debug.randomItem">随机道具</button>
+                            <button class="debug-btn" data-item="clear" data-i18n="debug.clearItems">清空道具</button>
                         </div>
                     </div>
                     <div class="debug-section">
-                        <label>控制:</label>
+                        <label data-i18n="debug.controls">控制:</label>
                         <div class="debug-buttons">
-                            <button class="debug-btn" data-control="skip-dealer">跳过庄家</button>
-                            <button class="debug-btn" data-control="new-round">新回合</button>
+                            <button class="debug-btn" data-control="skip-dealer" data-i18n="debug.skipDealer">跳过庄家</button>
+                            <button class="debug-btn" data-control="new-round" data-i18n="debug.newRound">新回合</button>
                         </div>
                     </div>
                     <div class="debug-section">
-                        <label>子弹控制:</label>
+                        <label data-i18n="debug.shellControl">子弹控制:</label>
                         <div class="debug-buttons">
-                            <button class="debug-btn" data-shells="peek">🔍 偷看</button>
-                            <button class="debug-btn" data-shells="set-live">设为实弹</button>
-                            <button class="debug-btn" data-shells="set-blank">设为空弹</button>
+                            <button class="debug-btn" data-shells="peek" data-i18n="debug.peek">🔍 偷看</button>
+                            <button class="debug-btn" data-shells="set-live" data-i18n="debug.setLive">设为实弹</button>
+                            <button class="debug-btn" data-shells="set-blank" data-i18n="debug.setBlank">设为空弹</button>
                         </div>
                     </div>
                 </div>
             </div>
             <div id="menu" class="menu-screen">
-                <button id="menu-mute-btn" class="mute-btn" title="静音">🔊</button>
-                <h1>恶魔轮盘</h1>
+                <button id="menu-mute-btn" class="mute-btn" data-i18n-attr="title" data-i18n="ui.muteTooltip" title="静音">🔊</button>
+                <h1 data-i18n="ui.title">恶魔轮盘</h1>
                 <div class="menu-buttons">
-                    <button id="start-btn" class="menu-btn">开始游戏</button>
-                    <button id="achievement-btn" class="menu-btn">🏆 成就</button>
-                    <button id="how-to-play-btn" class="menu-btn menu-btn-secondary">📖 游戏说明</button>
+                    <button id="start-btn" class="menu-btn" data-i18n="ui.startGame">开始游戏</button>
+                    <button id="achievement-btn" class="menu-btn" data-i18n="ui.achievements">🏆 成就</button>
+                    <button id="how-to-play-btn" class="menu-btn menu-btn-secondary" data-i18n="ui.howToPlay">📖 游戏说明</button>
+                    <button id="settings-btn" class="menu-btn menu-btn-secondary" data-i18n="settings.title">⚙️ 设置</button>
+                    <button id="stats-btn" class="menu-btn menu-btn-secondary" data-i18n="stats.title">📊 统计数据</button>
+                    <div id="lang-switch" class="lang-switch">
+                        <button data-lang="en">English</button>
+                        <button data-lang="zh-CN" class="active">中文</button>
+                        <button data-lang="ja">日本語</button>
+                    </div>
                 </div>
             </div>
 
@@ -138,74 +145,142 @@
             <div id="how-to-play" class="how-to-play hidden">
                 <div class="how-to-play-content">
                     <div class="how-to-play-header">
-                        <span>📖 游戏说明</span>
+                        <span data-i18n="ui.howToPlay">📖 游戏说明</span>
                         <button id="how-to-play-close" class="achievement-close">&times;</button>
                     </div>
                     <div class="how-to-play-body">
                         <div class="how-to-play-section">
-                            <h3>🎯 目标</h3>
-                            <p>在三轮逐渐升级的对决中击败庄家，活到最后。</p>
+                            <h3 data-i18n="howToPlay.objective.title">🎯 目标</h3>
+                            <p data-i18n="howToPlay.objective.text">在三轮逐渐升级的对决中击败庄家，活到最后。</p>
                         </div>
                         <div class="how-to-play-section">
-                            <h3>🔫 规则</h3>
-                            <p>每轮随机装入实弹和空弹。你的回合可以<strong>射击对手</strong>或<strong>射击自己</strong>：</p>
+                            <h3 data-i18n="howToPlay.rules.title">🔫 规则</h3>
+                            <p data-i18n-html="true" data-i18n="howToPlay.rules.text">每轮随机装入实弹和空弹。你的回合可以<strong>射击对手</strong>或<strong>射击自己</strong>：</p>
                             <ul>
-                                <li>实弹打对手 → 对手扣血，换对手回合</li>
-                                <li>实弹打自己 → 自己扣血，换对手回合</li>
-                                <li>空弹打对手 → 换对手回合</li>
-                                <li>空弹打自己 → <strong>继续你的回合</strong></li>
+                                <li data-i18n="howToPlay.rules.liveVsOpponent">实弹打对手 → 对手扣血，换对手回合</li>
+                                <li data-i18n="howToPlay.rules.liveVsSelf">实弹打自己 → 自己扣血，换对手回合</li>
+                                <li data-i18n="howToPlay.rules.blankVsOpponent">空弹打对手 → 换对手回合</li>
+                                <li data-i18n-html="true" data-i18n="howToPlay.rules.blankVsSelf">空弹打自己 → <strong>继续你的回合</strong></li>
                             </ul>
                         </div>
                         <div class="how-to-play-section">
-                            <h3>📦 道具（Stage 2+）</h3>
+                            <h3 data-i18n="howToPlay.items.title">📦 道具（Stage 2+）</h3>
                             <div class="item-list">
-                                <span class="item-entry">🔍 放大镜 — 查看当前子弹</span>
-                                <span class="item-entry">🍺 啤酒 — 退出当前子弹</span>
-                                <span class="item-entry">🪚 手锯 — 下次伤害翻倍</span>
-                                <span class="item-entry">🚬 香烟 — 恢复1点生命</span>
-                                <span class="item-entry">⛓️ 手铐 — 对手跳过下一回合</span>
-                                <span class="item-entry">💊 过期药 — 40%回2血/60%扣1血</span>
-                                <span class="item-entry">🔄 逆转器 — 反转当前子弹类型</span>
-                                <span class="item-entry">📱 一次性手机 — 揭示一发剩余子弹</span>
-                                <span class="item-entry">💉 肾上腺素 — 偷取对手一个道具</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.magnifying_glass">🔍 放大镜 — 查看当前子弹</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.beer">🍺 啤酒 — 退出当前子弹</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.handsaw">🪚 手锯 — 下次伤害翻倍</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.cigarette">🚬 香烟 — 恢复1点生命</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.handcuffs">⛓️ 手铐 — 对手跳过下一回合</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.expired_medicine">💊 过期药 — 40%回2血/60%扣1血</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.inverter">🔄 逆转器 — 反转当前子弹类型</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.burner_phone">📱 一次性手机 — 揭示一发剩余子弹</span>
+                                <span class="item-entry" data-i18n="howToPlay.items.adrenaline">💉 肾上腺素 — 偷取对手一个道具</span>
                             </div>
                         </div>
                         <div class="how-to-play-section">
-                            <h3>⚡ 阶段</h3>
+                            <h3 data-i18n="howToPlay.stages.title">⚡ 阶段</h3>
                             <ul>
-                                <li><strong>Stage 1</strong> — 2 HP，无道具（教学关）</li>
-                                <li><strong>Stage 2</strong> — 4 HP，每人3个道具</li>
-                                <li><strong>Stage 3</strong> — 5 HP，每人4个道具</li>
+                                <li data-i18n-html="true" data-i18n="howToPlay.stages.1"><strong>Stage 1</strong> — 2 HP，无道具（教学关）</li>
+                                <li data-i18n-html="true" data-i18n="howToPlay.stages.2"><strong>Stage 2</strong> — 4 HP，每人3个道具</li>
+                                <li data-i18n-html="true" data-i18n="howToPlay.stages.3"><strong>Stage 3</strong> — 5 HP，每人4个道具</li>
                             </ul>
                         </div>
                         <div class="how-to-play-section">
-                            <h3>🎰 Double or Nothing</h3>
-                            <p>通关后可选赌一把：1实弹 vs 1空弹。赢了继续赌，输了一切归零。</p>
+                            <h3 data-i18n="howToPlay.don.title">🎰 Double or Nothing</h3>
+                            <p data-i18n="howToPlay.don.text">通关后可选赌一把：1实弹 vs 1空弹。赢了继续赌，输了一切归零。</p>
                         </div>
                         <div class="how-to-play-section">
-                            <h3>💡 技巧</h3>
-                            <p>记住已打出的子弹类型来推断剩余弹药。用放大镜确认后再做决定。空弹打自己可以多一个回合。手铐+实弹是致命组合。</p>
+                            <h3 data-i18n="howToPlay.tips.title">💡 技巧</h3>
+                            <p data-i18n="howToPlay.tips.text">记住已打出的子弹类型来推断剩余弹药。用放大镜确认后再做决定。空弹打自己可以多一个回合。手铐+实弹是致命组合。</p>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Settings Panel -->
+            <div id="settings-panel" class="settings-panel hidden">
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <span data-i18n="settings.title">⚙️ 设置</span>
+                        <button id="settings-close" class="achievement-close">&times;</button>
+                    </div>
+                    <div class="settings-body">
+                        <div class="settings-section">
+                            <label data-i18n="settings.language">语言</label>
+                            <div id="settings-lang-switch" class="lang-switch lang-switch-inline">
+                                <button data-lang="en">English</button>
+                                <button data-lang="zh-CN">中文</button>
+                                <button data-lang="ja">日本語</button>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.bgmVolume">背景音乐</label>
+                            <div class="settings-slider-row">
+                                <input type="range" id="bgm-volume" class="settings-slider" min="0" max="100" value="30">
+                                <span id="bgm-volume-val" class="settings-slider-val">30%</span>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.sfxVolume">音效</label>
+                            <div class="settings-slider-row">
+                                <input type="range" id="sfx-volume" class="settings-slider" min="0" max="100" value="60">
+                                <span id="sfx-volume-val" class="settings-slider-val">60%</span>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.effects">视觉效果</label>
+                            <div class="settings-toggles">
+                                <div class="settings-toggle-row">
+                                    <span data-i18n="settings.screenShake">屏幕震动</span>
+                                    <button id="toggle-shake" class="settings-toggle active" data-key="screenShake">ON</button>
+                                </div>
+                                <div class="settings-toggle-row">
+                                    <span data-i18n="settings.bloomEffect">发光特效</span>
+                                    <button id="toggle-bloom" class="settings-toggle active" data-key="bloom">ON</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label data-i18n="settings.difficulty">AI 难度</label>
+                            <div id="difficulty-switch" class="lang-switch lang-switch-inline">
+                                <button data-diff="easy" data-i18n="settings.difficulty.easy">简单</button>
+                                <button data-diff="normal" class="active" data-i18n="settings.difficulty.normal">普通</button>
+                                <button data-diff="hard" data-i18n="settings.difficulty.hard">困难</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div id="stats-panel" class="settings-panel hidden">
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <span data-i18n="stats.title">📊 统计数据</span>
+                        <button id="stats-close" class="achievement-close">&times;</button>
+                    </div>
+                    <div class="settings-body" id="stats-body">
+                    </div>
+                </div>
+            </div>
+
             <div id="game-over" class="menu-screen hidden">
                 <h1 id="game-over-title"></h1>
                 <p id="game-over-message"></p>
                 <div class="menu-buttons">
-                    <button id="don-btn" class="menu-btn" style="display:none">🎰 Double or Nothing</button>
-                    <button id="restart-btn" class="menu-btn">重新开始</button>
+                    <button id="don-btn" class="menu-btn" style="display:none" data-i18n="ui.don">🎰 Double or Nothing</button>
+                    <button id="restart-btn" class="menu-btn" data-i18n="ui.restart">重新开始</button>
                 </div>
             </div>
 
             <!-- In-game Pause Menu -->
             <div id="pause-menu" class="pause-menu hidden">
                 <div class="pause-menu-content">
-                    <h2>菜单</h2>
-                    <button id="pause-mute-btn" class="pause-menu-btn">🔊 音乐：开</button>
-                    <button id="pause-restart-btn" class="pause-menu-btn">🔄 重新开始</button>
-                    <button id="pause-quit-btn" class="pause-menu-btn">🚪 退出到主菜单</button>
-                    <button id="pause-resume-btn" class="pause-menu-btn pause-menu-btn-primary">▶ 继续游戏</button>
+                    <h2 data-i18n="ui.menu">菜单</h2>
+                    <button id="pause-mute-btn" class="pause-menu-btn" data-i18n="ui.musicOn">🔊 音乐：开</button>
+                    <button id="pause-restart-btn" class="pause-menu-btn" data-i18n="ui.restart">🔄 重新开始</button>
+                    <button id="pause-quit-btn" class="pause-menu-btn" data-i18n="ui.quitToMenu">🚪 退出到主菜单</button>
+                    <button id="pause-resume-btn" class="pause-menu-btn pause-menu-btn-primary" data-i18n="ui.resume">▶ 继续游戏</button>
                 </div>
             </div>
         </div>

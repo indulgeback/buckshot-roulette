@@ -20,8 +20,17 @@ let bgmAudio = null;
 let bgmPlaying = false;
 let audioCtx = null;
 let isMuted = false;
+let sfxVolume = 0.6;
+let bgmVolume = 0.3;
 
 export function getMuted() { return isMuted; }
+export function getSfxVolume() { return sfxVolume; }
+export function setSfxVolume(v) { sfxVolume = Math.max(0, Math.min(1, v)); }
+export function getBgmVolume() { return bgmVolume; }
+export function setBgmVolume(v) {
+    bgmVolume = Math.max(0, Math.min(1, v));
+    if (bgmAudio && bgmPlaying) bgmAudio.volume = bgmVolume;
+}
 
 export function setMuted(muted) {
     isMuted = muted;
@@ -69,7 +78,7 @@ function playSound(name) {
     if (isMuted) return;
     if (sounds[name]) {
         const audio = sounds[name].cloneNode();
-        audio.volume = 0.6;
+        audio.volume = sfxVolume;
         audio.play().catch(() => {});
     }
 }
@@ -269,7 +278,7 @@ export function startBGMusic() {
 
     if (bgmAudio) {
         bgmAudio.loop = true;
-        bgmAudio.volume = 0.3;
+        bgmAudio.volume = bgmVolume;
         bgmAudio.play().catch(() => {});
         return;
     }
