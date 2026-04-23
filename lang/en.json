@@ -298,5 +298,7 @@
   "event.mp.yourTurn": "Your turn!",
   "event.mp.opponentTurn": "Opponent's turn...",
   "event.mp.connected": "Opponent connected! Game on!",
-  "event.mp.disconnected": "Opponent disconnected"
+  "event.mp.disconnected": "Opponent disconnected",
+  "event.mp.rematch": "Rematch! New game starting...",
+  "ui.rematch": "🔄 Rematch"
 }

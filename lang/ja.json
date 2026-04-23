@@ -298,5 +298,7 @@
   "event.mp.yourTurn": "あなたのターン！",
   "event.mp.opponentTurn": "相手のターン...",
   "event.mp.connected": "対戦相手が接続！ゲーム開始",
-  "event.mp.disconnected": "対戦相手が切断しました"
+  "event.mp.disconnected": "対戦相手が切断しました",
+  "event.mp.rematch": "再戦！新しいゲームを開始します...",
+  "ui.rematch": "🔄 再戦"
 }

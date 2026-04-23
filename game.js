@@ -78,6 +78,10 @@ const EventLog = {
             this.entries.pop();
         }
         this.render();
+        // Auto-broadcast to client in multiplayer host mode
+        if (gameMode === 'multiplayer' && multiRole === 'host') {
+            mpSend({ type: 'eventLog', text, eventType: type, icon });
+        }
     },
 
     render() {
@@ -185,10 +189,16 @@ function showMessage(text) {
     const msg = document.getElementById('game-message');
     msg.textContent = text;
     msg.style.display = 'block';
+    if (gameMode === 'multiplayer' && multiRole === 'host') {
+        mpSend({ type: 'showMessage', text });
+    }
 }
 
 function hideMessage() {
     document.getElementById('game-message').style.display = 'none';
+    if (gameMode === 'multiplayer' && multiRole === 'host') {
+        mpSend({ type: 'hideMessage' });
+    }
 }
 
 async function flashMessage(text, duration = DELAY.MESSAGE) {
@@ -629,7 +639,11 @@ function startGame() {
 function restartGame() {
     document.getElementById('game-over').classList.add('hidden');
     if (gameMode === 'multiplayer') {
-        mpQuitToMenu();
+        if (multiRole === 'host') {
+            mpSend({ type: 'rematch' });
+            startMultiplayerHost();
+        }
+        // Client waits for new fullState from host
     } else {
         startGame();
     }
@@ -653,6 +667,7 @@ async function startRound() {
     playRoundStart();
     animateRoundStart();
     animateShellReload();
+    broadcastAnimate('roundStart');
 
     const config = STAGE_CONFIG[gameData.stage];
     if (config.items > 0) {
@@ -696,6 +711,7 @@ async function executeShot(shooter, target) {
     const liveProbability = remaining > 0 ? liveRemaining / remaining : 0;
 
     animateShot();
+    broadcastAnimate('shot');
     await delay(DELAY.ANIM);
 
     if (shell === 'live') {
@@ -703,6 +719,7 @@ async function executeShot(shooter, target) {
         targetData.hp -= damage;
         playShotgunBlast();
         animateHit(target);
+        broadcastAnimate('hit', { target });
         playHit();
 
         // Dealer reactions
@@ -739,6 +756,7 @@ async function executeShot(shooter, target) {
         }
     } else {
         playBlankShot();
+        broadcastAnimate('blank');
 
         const shooterName = getActorName(shooter);
         const targetName = getActorName(target);
@@ -804,7 +822,7 @@ function resolveAfterShot(shooter, target, shellType) {
             document.getElementById('game-over').classList.remove('hidden');
             return;
         }
-        gameData.stage >= 3 ? endGame(true) : nextStage();
+        gameData.stage >= 3 || gameMode === 'multiplayer' ? endGame(true) : nextStage();
         return;
     }
     // Priority 2: Shells spent
@@ -901,6 +919,7 @@ function useItem(item, user) {
     userData.items.splice(index, 1);
     playItemUse();
     animateItemUse(item.id);
+    broadcastAnimate('itemUse', { itemId: item.id });
 
     const userName = getActorName(user);
     const itemName = t(`item.${item.id}.name`);
@@ -1142,8 +1161,8 @@ async function nextStage() {
 function endGame(victory) {
     gameData.state = victory ? GameState.VICTORY : GameState.GAME_OVER;
     stopBGMusic();
-    if (victory) { playVictory(); animateVictory(); setSceneMood('victory'); }
-    else { playGameOver(); animateDefeat(); setSceneMood('defeat'); }
+    if (victory) { playVictory(); animateVictory(); broadcastAnimate('victory'); setSceneMood('victory'); }
+    else { playGameOver(); animateDefeat(); broadcastAnimate('defeat'); setSceneMood('defeat'); }
 
     if (gameMode !== 'multiplayer') {
         checkAchievements('game_end', {
@@ -1166,6 +1185,12 @@ function endGame(victory) {
 
     const donBtn = document.getElementById('don-btn');
     if (donBtn) donBtn.style.display = (victory && gameMode !== 'multiplayer') ? 'block' : 'none';
+
+    // Update restart button text for multiplayer
+    const restartBtn = document.getElementById('restart-btn');
+    if (restartBtn) {
+        restartBtn.textContent = gameMode === 'multiplayer' ? t('ui.rematch') : t('ui.restart');
+    }
 
     document.getElementById('game-over').classList.remove('hidden');
     broadcastState();
@@ -1320,6 +1345,11 @@ function broadcastMessage(text, duration) {
     mpSend({ type: 'showMessage', text, duration });
 }
 
+function broadcastAnimate(animType, data = {}) {
+    if (gameMode !== 'multiplayer' || multiRole !== 'host') return;
+    mpSend({ type: 'animate', animType, data });
+}
+
 /** Client: apply state received from host (with perspective flip) */
 function applyRemoteState(remote) {
     // Client sees themselves as 'player' (bottom), opponent as 'dealer' (top)
@@ -1342,6 +1372,33 @@ function applyRemoteState(remote) {
     gameData.state = remote.state;
     gameData.donRound = remote.donRound;
     updateUI();
+
+    // New game starting — hide game over if visible
+    if (remote.state === 'round_start' || remote.state === 'player_turn' || remote.state === 'dealer_turn') {
+        document.getElementById('game-over').classList.add('hidden');
+    }
+
+    // Handle game over display on client
+    if (remote.state === 'game_over' || remote.state === 'victory') {
+        // Client is in remote.dealer position
+        const clientDead = remote.dealer.hp <= 0;
+        const hostPlayerDead = remote.player.hp <= 0;
+        const iWon = hostPlayerDead && !clientDead;
+
+        document.getElementById('game-over-title').textContent = iWon ? t('gameOver.victory') : t('gameOver.defeat');
+        document.getElementById('game-over-message').textContent = iWon
+            ? t('gameOver.victoryMsg')
+            : t('gameOver.defeatMsg', { stage: remote.stage });
+        document.getElementById('don-btn').style.display = 'none';
+        document.getElementById('game-over').classList.remove('hidden');
+
+        // Map game state for client UI
+        if (remote.state === 'victory') {
+            gameData.state = GameState.VICTORY;
+        } else {
+            gameData.state = GameState.GAME_OVER;
+        }
+    }
 }
 
 /** Client: handle messages from host */
@@ -1356,14 +1413,39 @@ function handleHostMessage(msg) {
             EventLog.add(t('event.mp.yourTurn'), 'turn-change', '👤');
             break;
         case 'showMessage':
-            showMessage(msg.text);
-            if (msg.duration) setTimeout(hideMessage, msg.duration);
+            // Only show if we didn't trigger it locally (prevent duplicates)
+            if (multiRole === 'client') {
+                const el = document.getElementById('game-message');
+                el.textContent = msg.text;
+                el.style.display = 'block';
+            }
+            break;
+        case 'hideMessage':
+            if (multiRole === 'client') {
+                document.getElementById('game-message').style.display = 'none';
+            }
             break;
         case 'eventLog':
             EventLog.add(msg.text, msg.eventType, msg.icon);
             break;
-        case 'gameOver':
-            // Handled via fullState
+        case 'animate':
+            if (multiRole === 'client') {
+                switch (msg.animType) {
+                    case 'shot': animateShot(); break;
+                    case 'hit': animateHit(msg.data.target); playShotgunBlast(); playHit(); break;
+                    case 'blank': playBlankShot(); break;
+                    case 'itemUse': animateItemUse(msg.data.itemId); playItemUse(); break;
+                    case 'roundStart': animateRoundStart(); animateShellReload(); playShellLoad(); playRoundStart(); break;
+                    case 'victory': animateVictory(); playVictory(); break;
+                    case 'defeat': animateDefeat(); playGameOver(); break;
+                }
+            }
+            break;
+        case 'rematch':
+            // Host wants rematch — hide game over and wait for new state
+            document.getElementById('game-over').classList.add('hidden');
+            EventLog.add(t('event.mp.rematch'), 'stage', '🔄');
+            startBGMusic();
             break;
     }
 }
@@ -1389,9 +1471,10 @@ async function startMultiplayerHost() {
     document.getElementById('multiplayer-panel').classList.add('hidden');
     document.getElementById('menu').classList.add('hidden');
 
-    gameData.stage = 1;
-    gameData.player = { hp: 2, maxHp: 2, items: [], handcuffed: false };
-    gameData.dealer = { hp: 2, maxHp: 2, items: [], handcuffed: false };
+    // Multiplayer: no stages, use max config directly
+    gameData.stage = 3;
+    gameData.player = { hp: 5, maxHp: 5, items: [], handcuffed: false };
+    gameData.dealer = { hp: 5, maxHp: 5, items: [], handcuffed: false };
     gameData.aiKnownShell = null;
     EventLog.clear();
     gameData.donRound = 0;

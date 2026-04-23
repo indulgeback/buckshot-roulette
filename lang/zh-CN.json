@@ -298,5 +298,7 @@
   "event.mp.yourTurn": "你的回合！",
   "event.mp.opponentTurn": "对手的回合...",
   "event.mp.connected": "对手已连接！游戏开始",
-  "event.mp.disconnected": "对手断开连接"
+  "event.mp.disconnected": "对手断开连接",
+  "event.mp.rematch": "再来一局！新游戏即将开始...",
+  "ui.rematch": "🔄 再来一局"
 }
