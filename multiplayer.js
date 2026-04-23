@@ -8,6 +8,16 @@
 
 const PEER_PREFIX = 'buckshot-roulette-';
 
+const ICE_CONFIG = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+    ]
+};
+
 let peer = null;
 let conn = null;
 let hostRole = false;
@@ -26,6 +36,46 @@ function generateRoomCode() {
     return code;
 }
 
+/** Set up data connection event handlers */
+function setupConnection(connection) {
+    console.log('[MP] setupConnection, open:', connection.open);
+
+    if (connection.open) {
+        // Already open (rare but possible)
+        connected = true;
+        if (connectionChangeHandler) connectionChangeHandler('connected');
+    }
+
+    connection.on('open', () => {
+        console.log('[MP] DataChannel OPEN');
+        connected = true;
+        if (connectionChangeHandler) connectionChangeHandler('connected');
+    });
+
+    connection.on('data', (data) => {
+        if (messageHandler) {
+            try {
+                const msg = typeof data === 'string' ? JSON.parse(data) : data;
+                messageHandler(msg);
+            } catch (e) {
+                console.error('[MP] Failed to parse message:', e);
+            }
+        }
+    });
+
+    connection.on('close', () => {
+        console.log('[MP] DataChannel closed');
+        connected = false;
+        if (connectionChangeHandler) connectionChangeHandler('disconnected');
+    });
+
+    connection.on('error', (err) => {
+        console.error('[MP] DataChannel error:', err);
+        connected = false;
+        if (connectionChangeHandler) connectionChangeHandler('error');
+    });
+}
+
 /** Create a room — returns the room code */
 export function createRoom() {
     return new Promise((resolve, reject) => {
@@ -34,17 +84,15 @@ export function createRoom() {
         hostRole = true;
         connected = false;
 
-        peer = new Peer(peerId, {
-            debug: 0
-        });
+        peer = new Peer(peerId, { config: ICE_CONFIG });
 
         peer.on('open', () => {
-            console.log('[MP] Host peer open, id:', peerId);
+            console.log('[MP] Host peer OPEN, id:', peerId);
             resolve(code);
         });
 
         peer.on('connection', (connection) => {
-            console.log('[MP] Host received connection, open:', connection.open, 'peer:', connection.peer);
+            console.log('[MP] Host received connection, open:', connection.open);
             conn = connection;
             setupConnection(conn);
         });
@@ -60,7 +108,8 @@ export function createRoom() {
 
         peer.on('disconnected', () => {
             console.log('[MP] Host peer disconnected');
-            handleDisconnect();
+            connected = false;
+            if (connectionChangeHandler) connectionChangeHandler('disconnected');
         });
     });
 }
@@ -78,43 +127,30 @@ export function joinRoom(code) {
         hostRole = false;
         connected = false;
 
-        peer = new Peer({
-            debug: 0
-        });
+        peer = new Peer({ config: ICE_CONFIG });
 
-        peer.on('open', () => {
-            console.log('[MP] Client peer open, connecting to:', targetId);
-            conn = peer.connect(targetId, { reliable: true });
+        peer.on('open', (myId) => {
+            console.log('[MP] Client peer OPEN, id:', myId, '→ connecting to:', targetId);
+            conn = peer.connect(targetId);
+            setupConnection(conn);
 
-            conn.on('open', () => {
-                console.log('[MP] Client connection open!');
-                connected = true;
-                if (connectionChangeHandler) connectionChangeHandler('connected');
-                resolve();
-            });
-
-            conn.on('data', (data) => {
-                if (messageHandler) {
-                    try {
-                        const msg = typeof data === 'string' ? JSON.parse(data) : data;
-                        messageHandler(msg);
-                    } catch (e) {
-                        console.error('[MP] Failed to parse message:', e);
-                    }
+            // Resolve when the connection opens
+            // setupConnection already handles the 'open' event,
+            // but we need to resolve this promise
+            const origHandler = connectionChangeHandler;
+            connectionChangeHandler = (state) => {
+                if (state === 'connected') {
+                    resolve();
                 }
-            });
+                if (origHandler) origHandler(state);
+            };
 
-            conn.on('close', () => {
-                connected = false;
-                if (connectionChangeHandler) connectionChangeHandler('disconnected');
-            });
-
-            conn.on('error', (err) => {
-                console.error('[MP] Connection error:', err);
-                connected = false;
-                if (connectionChangeHandler) connectionChangeHandler('error');
-                reject(err);
-            });
+            // Timeout after 15s
+            setTimeout(() => {
+                if (!connected) {
+                    reject(new Error('Connection timeout'));
+                }
+            }, 15000);
         });
 
         peer.on('error', (err) => {
@@ -127,52 +163,19 @@ export function joinRoom(code) {
         });
 
         peer.on('disconnected', () => {
-            handleDisconnect();
+            console.log('[MP] Client peer disconnected');
+            connected = false;
+            if (connectionChangeHandler) connectionChangeHandler('disconnected');
         });
     });
-}
-
-/** Set up data connection event handlers */
-function setupConnection(connection) {
-    connection.on('open', () => {
-        console.log('[MP] setupConnection: open');
-        connected = true;
-        if (connectionChangeHandler) connectionChangeHandler('connected');
-    });
-
-    connection.on('data', (data) => {
-        if (messageHandler) {
-            try {
-                const msg = typeof data === 'string' ? JSON.parse(data) : data;
-                messageHandler(msg);
-            } catch (e) {
-                console.error('[MP] Failed to parse message:', e);
-            }
-        }
-    });
-
-    connection.on('close', () => {
-        connected = false;
-        if (connectionChangeHandler) connectionChangeHandler('disconnected');
-    });
-
-    connection.on('error', (err) => {
-        console.error('[MP] DataConnection error:', err);
-        connected = false;
-        if (connectionChangeHandler) connectionChangeHandler('error');
-    });
-}
-
-/** Handle peer-level disconnect */
-function handleDisconnect() {
-    connected = false;
-    if (connectionChangeHandler) connectionChangeHandler('disconnected');
 }
 
 /** Send a message to the other peer */
 export function send(data) {
     if (conn && connected) {
         conn.send(JSON.stringify(data));
+    } else {
+        console.warn('[MP] send() called but not connected');
     }
 }
 
