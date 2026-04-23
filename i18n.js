@@ -3,7 +3,7 @@
 
 const STORAGE_KEY = 'buckshot_lang';
 const SUPPORTED_LANGS = ['zh-CN', 'en', 'ja'];
-const FALLBACK_LANG = 'zh-CN';
+const FALLBACK_LANG = 'en';
 
 let currentLang = FALLBACK_LANG;
 let packs = {};       // cached language packs
