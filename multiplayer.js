@@ -1,34 +1,32 @@
 /**
  * multiplayer.js — PeerJS WebRTC P2P connection manager
- *
- * Host creates a room (6-char code = PeerJS ID).
- * Client joins by entering the room code.
- * All game data flows over WebRTC DataChannel.
  */
 
-const PEER_PREFIX = 'buckshot-roulette-';
+const PEER_PREFIX = 'br-'; // short prefix to avoid PeerJS ID issues
 
-const ICE_CONFIG = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' },
-    ]
+const PEER_OPTIONS = {
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+        ]
+    }
 };
 
 let peer = null;
 let conn = null;
 let hostRole = false;
 let connected = false;
+let destroyed = false;
 
 let messageHandler = null;
 let connectionChangeHandler = null;
 
-/** Generate a 6-char alphanumeric room code */
 function generateRoomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
         code += chars[Math.floor(Math.random() * chars.length)];
@@ -36,12 +34,16 @@ function generateRoomCode() {
     return code;
 }
 
-/** Set up data connection event handlers */
+function cleanup() {
+    conn = null;
+    peer = null;
+    connected = false;
+}
+
 function setupConnection(connection) {
     console.log('[MP] setupConnection, open:', connection.open);
 
     if (connection.open) {
-        // Already open (rare but possible)
         connected = true;
         if (connectionChangeHandler) connectionChangeHandler('connected');
     }
@@ -58,7 +60,7 @@ function setupConnection(connection) {
                 const msg = typeof data === 'string' ? JSON.parse(data) : data;
                 messageHandler(msg);
             } catch (e) {
-                console.error('[MP] Failed to parse message:', e);
+                console.error('[MP] Parse error:', e);
             }
         }
     });
@@ -66,42 +68,75 @@ function setupConnection(connection) {
     connection.on('close', () => {
         console.log('[MP] DataChannel closed');
         connected = false;
-        if (connectionChangeHandler) connectionChangeHandler('disconnected');
+        if (connectionChangeHandler && !destroyed) connectionChangeHandler('disconnected');
     });
 
     connection.on('error', (err) => {
         console.error('[MP] DataChannel error:', err);
         connected = false;
-        if (connectionChangeHandler) connectionChangeHandler('error');
     });
 }
 
-/** Create a room — returns the room code */
+/** Create a room with retry on ID collision */
 export function createRoom() {
+    destroyed = false;
+    hostRole = true;
+    connected = false;
+
+    return tryCreateRoom(0);
+}
+
+function tryCreateRoom(attempt) {
     return new Promise((resolve, reject) => {
+        if (attempt >= 3) {
+            reject(new Error('Failed to create room after 3 attempts'));
+            return;
+        }
+
         const code = generateRoomCode();
         const peerId = PEER_PREFIX + code;
-        hostRole = true;
-        connected = false;
 
-        peer = new Peer(peerId, { config: ICE_CONFIG });
+        // Clean up previous peer if retrying
+        if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } }
+
+        peer = new Peer(peerId, PEER_OPTIONS);
+        let settled = false;
+
+        const timeout = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                console.log('[MP] Host peer timeout, attempt', attempt);
+                try { peer.destroy(); } catch (e) { /* ignore */ }
+                cleanup();
+                tryCreateRoom(attempt + 1).then(resolve).catch(reject);
+            }
+        }, 10000);
 
         peer.on('open', () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
             console.log('[MP] Host peer OPEN, id:', peerId);
             resolve(code);
         });
 
         peer.on('connection', (connection) => {
-            console.log('[MP] Host received connection, open:', connection.open);
+            console.log('[MP] Host received connection');
             conn = connection;
             setupConnection(conn);
         });
 
         peer.on('error', (err) => {
             console.error('[MP] Host peer error:', err.type, err);
+            if (settled) return;
+            clearTimeout(timeout);
             if (err.type === 'unavailable-id') {
-                reject(new Error('Room code collision, try again'));
+                // ID collision — retry with new code
+                cleanup();
+                tryCreateRoom(attempt + 1).then(resolve).catch(reject);
             } else {
+                settled = true;
+                cleanup();
                 reject(err);
             }
         });
@@ -109,7 +144,11 @@ export function createRoom() {
         peer.on('disconnected', () => {
             console.log('[MP] Host peer disconnected');
             connected = false;
-            if (connectionChangeHandler) connectionChangeHandler('disconnected');
+            if (connectionChangeHandler && !destroyed) connectionChangeHandler('disconnected');
+            // Try to reconnect
+            if (peer && !destroyed) {
+                try { peer.reconnect(); } catch (e) { /* ignore */ }
+            }
         });
     });
 }
@@ -117,6 +156,7 @@ export function createRoom() {
 /** Join an existing room by code */
 export function joinRoom(code) {
     return new Promise((resolve, reject) => {
+        destroyed = false;
         const cleanCode = code.trim().toUpperCase();
         if (!/^[A-HJ-NP-Z2-9]{6}$/.test(cleanCode)) {
             reject(new Error('Invalid room code'));
@@ -127,34 +167,45 @@ export function joinRoom(code) {
         hostRole = false;
         connected = false;
 
-        peer = new Peer({ config: ICE_CONFIG });
+        // Clean up previous peer
+        if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } }
+
+        peer = new Peer(PEER_OPTIONS);
+        let settled = false;
+
+        const timeout = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                console.log('[MP] Client connection timeout');
+                try { peer.destroy(); } catch (e) { /* ignore */ }
+                cleanup();
+                reject(new Error('Connection timeout'));
+            }
+        }, 15000);
 
         peer.on('open', (myId) => {
-            console.log('[MP] Client peer OPEN, id:', myId, '→ connecting to:', targetId);
-            conn = peer.connect(targetId);
+            console.log('[MP] Client peer OPEN, id:', myId, '→ target:', targetId);
+            conn = peer.connect(targetId, { serialization: 'json' });
             setupConnection(conn);
 
-            // Resolve when the connection opens
-            // setupConnection already handles the 'open' event,
-            // but we need to resolve this promise
+            // Wrap connectionChangeHandler to resolve promise
             const origHandler = connectionChangeHandler;
             connectionChangeHandler = (state) => {
-                if (state === 'connected') {
+                if (state === 'connected' && !settled) {
+                    settled = true;
+                    clearTimeout(timeout);
                     resolve();
                 }
                 if (origHandler) origHandler(state);
             };
-
-            // Timeout after 15s
-            setTimeout(() => {
-                if (!connected) {
-                    reject(new Error('Connection timeout'));
-                }
-            }, 15000);
         });
 
         peer.on('error', (err) => {
             console.error('[MP] Client peer error:', err.type, err);
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            cleanup();
             if (err.type === 'peer-unavailable') {
                 reject(new Error('Room not found'));
             } else {
@@ -165,51 +216,45 @@ export function joinRoom(code) {
         peer.on('disconnected', () => {
             console.log('[MP] Client peer disconnected');
             connected = false;
-            if (connectionChangeHandler) connectionChangeHandler('disconnected');
+            if (connectionChangeHandler && !destroyed) connectionChangeHandler('disconnected');
+            if (peer && !destroyed) {
+                try { peer.reconnect(); } catch (e) { /* ignore */ }
+            }
         });
     });
 }
 
-/** Send a message to the other peer */
 export function send(data) {
     if (conn && connected) {
-        conn.send(JSON.stringify(data));
-    } else {
-        console.warn('[MP] send() called but not connected');
+        try {
+            conn.send(data); // send as object (serialization: 'json')
+        } catch (e) {
+            console.error('[MP] Send error:', e);
+        }
     }
 }
 
-/** Register a handler for incoming messages */
 export function onMessage(handler) {
     messageHandler = handler;
 }
 
-/** Register a handler for connection state changes */
 export function onConnectionChange(cb) {
     connectionChangeHandler = cb;
 }
 
-/** Are we connected? */
 export function isConnected() {
     return connected;
 }
 
-/** Are we the host? */
 export function isHost() {
     return hostRole;
 }
 
-/** Disconnect and clean up */
 export function disconnect() {
-    if (conn) {
-        conn.close();
-        conn = null;
-    }
-    if (peer) {
-        peer.destroy();
-        peer = null;
-    }
-    connected = false;
+    destroyed = true;
+    if (conn) { try { conn.close(); } catch (e) { /* ignore */ } }
+    if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } }
+    cleanup();
     hostRole = false;
     messageHandler = null;
     connectionChangeHandler = null;
