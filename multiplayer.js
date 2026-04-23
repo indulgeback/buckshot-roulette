@@ -35,26 +35,22 @@ export function createRoom() {
         connected = false;
 
         peer = new Peer(peerId, {
-            debug: 0,
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                ]
-            }
+            debug: 0
         });
 
         peer.on('open', () => {
+            console.log('[MP] Host peer open, id:', peerId);
             resolve(code);
         });
 
         peer.on('connection', (connection) => {
+            console.log('[MP] Host received connection, open:', connection.open, 'peer:', connection.peer);
             conn = connection;
             setupConnection(conn);
         });
 
         peer.on('error', (err) => {
-            console.error('[MP] Peer error:', err);
+            console.error('[MP] Host peer error:', err.type, err);
             if (err.type === 'unavailable-id') {
                 reject(new Error('Room code collision, try again'));
             } else {
@@ -63,6 +59,7 @@ export function createRoom() {
         });
 
         peer.on('disconnected', () => {
+            console.log('[MP] Host peer disconnected');
             handleDisconnect();
         });
     });
@@ -82,31 +79,46 @@ export function joinRoom(code) {
         connected = false;
 
         peer = new Peer({
-            debug: 0,
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                ]
-            }
+            debug: 0
         });
 
         peer.on('open', () => {
+            console.log('[MP] Client peer open, connecting to:', targetId);
             conn = peer.connect(targetId, { reliable: true });
-            setupConnection(conn);
 
             conn.on('open', () => {
+                console.log('[MP] Client connection open!');
+                connected = true;
+                if (connectionChangeHandler) connectionChangeHandler('connected');
                 resolve();
+            });
+
+            conn.on('data', (data) => {
+                if (messageHandler) {
+                    try {
+                        const msg = typeof data === 'string' ? JSON.parse(data) : data;
+                        messageHandler(msg);
+                    } catch (e) {
+                        console.error('[MP] Failed to parse message:', e);
+                    }
+                }
+            });
+
+            conn.on('close', () => {
+                connected = false;
+                if (connectionChangeHandler) connectionChangeHandler('disconnected');
             });
 
             conn.on('error', (err) => {
                 console.error('[MP] Connection error:', err);
+                connected = false;
+                if (connectionChangeHandler) connectionChangeHandler('error');
                 reject(err);
             });
         });
 
         peer.on('error', (err) => {
-            console.error('[MP] Peer error:', err);
+            console.error('[MP] Client peer error:', err.type, err);
             if (err.type === 'peer-unavailable') {
                 reject(new Error('Room not found'));
             } else {
@@ -123,6 +135,7 @@ export function joinRoom(code) {
 /** Set up data connection event handlers */
 function setupConnection(connection) {
     connection.on('open', () => {
+        console.log('[MP] setupConnection: open');
         connected = true;
         if (connectionChangeHandler) connectionChangeHandler('connected');
     });

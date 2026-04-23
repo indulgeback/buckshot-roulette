@@ -681,7 +681,7 @@ async function executeShot(shooter, target) {
     if (shooter === 'player' && gameData.state !== GameState.PLAYER_TURN) return;
     // In multiplayer client mode, don't execute locally
     if (gameMode === 'multiplayer' && multiRole === 'client') {
-        mpSend({ type: 'action', action: 'shoot', target: target === 'player' ? 'opponent' : 'self' });
+        mpSend({ type: 'action', action: 'shoot', target: target === 'player' ? 'self' : 'opponent' });
         return;
     }
     gameData.state = GameState.ANIMATING;
