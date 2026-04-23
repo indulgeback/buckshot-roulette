@@ -9,6 +9,7 @@ import {
     setMuted, getMuted, getSfxVolume, setSfxVolume, getBgmVolume, setBgmVolume
 } from './audio.js';
 import { t, setLang, getLang, initI18n, updateDOM, onLangChange } from './i18n.js';
+import * as MP from './multiplayer.js';
 
 // ====== Constants ======
 
@@ -48,6 +49,9 @@ const DELAY = {
 };
 
 // ====== Game State ======
+
+let gameMode = 'single'; // 'single' | 'multiplayer'
+let multiRole = null;    // 'host' | 'client'
 
 let gameData = {
     state: GameState.MENU,
@@ -160,11 +164,15 @@ function pauseRestart() {
 function pauseQuitToMenu() {
     document.getElementById('pause-menu').classList.add('hidden');
     pausedState = null;
-    gameData.state = GameState.MENU;
-    stopBGMusic();
-    setSceneMood('calm');
-    document.getElementById('menu').classList.remove('hidden');
-    updateUI();
+    if (gameMode === 'multiplayer') {
+        mpQuitToMenu();
+    } else {
+        gameData.state = GameState.MENU;
+        stopBGMusic();
+        setSceneMood('calm');
+        document.getElementById('menu').classList.remove('hidden');
+        updateUI();
+    }
 }
 
 // ====== Helpers ======
@@ -341,6 +349,7 @@ async function init() {
     initScene();
     setupEventListeners();
     setupSettingsListeners();
+    setupMultiplayerListeners();
     updateUI();
     updateLangSwitchUI();
 }
@@ -603,6 +612,8 @@ function statsRow(label, value) {
 
 function startGame() {
     document.getElementById('menu').classList.add('hidden');
+    gameMode = 'single';
+    multiRole = null;
     gameData.stage = 1;
     gameData.player = { hp: 2, maxHp: 2, items: [], handcuffed: false };
     gameData.dealer = { hp: 2, maxHp: 2, items: [], handcuffed: false };
@@ -617,7 +628,11 @@ function startGame() {
 
 function restartGame() {
     document.getElementById('game-over').classList.add('hidden');
-    startGame();
+    if (gameMode === 'multiplayer') {
+        mpQuitToMenu();
+    } else {
+        startGame();
+    }
 }
 
 async function startRound() {
@@ -657,12 +672,18 @@ async function startRound() {
 
     gameData.state = GameState.PLAYER_TURN;
     updateUI();
+    broadcastState();
 }
 
 // ====== Core Shooting ======
 
 async function executeShot(shooter, target) {
     if (shooter === 'player' && gameData.state !== GameState.PLAYER_TURN) return;
+    // In multiplayer client mode, don't execute locally
+    if (gameMode === 'multiplayer' && multiRole === 'client') {
+        mpSend({ type: 'action', action: 'shoot', target: target === 'player' ? 'opponent' : 'self' });
+        return;
+    }
     gameData.state = GameState.ANIMATING;
 
     const shell = gameData.shotgun.shells[gameData.shotgun.currentIndex];
@@ -757,6 +778,7 @@ async function executeShot(shooter, target) {
     await delay(DELAY.MESSAGE);
     hideMessage();
     resolveAfterShot(shooter, target, shell);
+    broadcastState();
 }
 
 // ====== Post-Shot Resolution ======
@@ -833,7 +855,12 @@ function setTurn(who) {
     gameData.state = who === 'player' ? GameState.PLAYER_TURN : GameState.DEALER_TURN;
     updateUI();
     if (who === 'dealer') {
-        setTimeout(dealerTurn, DELAY.DEALER_THINK);
+        if (gameMode === 'multiplayer') {
+            // In multiplayer, client plays as dealer - send yourTurn
+            mpSend({ type: 'yourTurn' });
+        } else {
+            setTimeout(dealerTurn, DELAY.DEALER_THINK);
+        }
     }
 }
 
@@ -861,6 +888,11 @@ async function dealerTurn() {
 function useItem(item, user) {
     const isPlayer = user === 'player';
     if (isPlayer && gameData.state !== GameState.PLAYER_TURN) return;
+    // In multiplayer client mode, send action to host instead
+    if (gameMode === 'multiplayer' && multiRole === 'client' && isPlayer) {
+        mpSend({ type: 'action', action: 'useItem', itemId: item.id });
+        return;
+    }
 
     const userData = getEntity(user);
     const index = userData.items.findIndex(i => i.id === item.id);
@@ -1064,6 +1096,7 @@ function useItem(item, user) {
     trackStat('itemUsed');
     checkAchievements('item_used', itemAchievementData);
     updateUI();
+    broadcastState();
 
     // Check if expired medicine killed someone
     if (item.id === 'expired_medicine') {
@@ -1112,11 +1145,13 @@ function endGame(victory) {
     if (victory) { playVictory(); animateVictory(); setSceneMood('victory'); }
     else { playGameOver(); animateDefeat(); setSceneMood('defeat'); }
 
-    checkAchievements('game_end', {
-        victory,
-        playerHp: gameData.player.hp,
-        stage: gameData.stage,
-    });
+    if (gameMode !== 'multiplayer') {
+        checkAchievements('game_end', {
+            victory,
+            playerHp: gameData.player.hp,
+            stage: gameData.stage,
+        });
+    }
 
     EventLog.add(
         victory ? t('stage.victory') : t('stage.defeat', { stage: gameData.stage }),
@@ -1130,9 +1165,10 @@ function endGame(victory) {
         : t('gameOver.defeatMsg', { stage: gameData.stage });
 
     const donBtn = document.getElementById('don-btn');
-    if (donBtn) donBtn.style.display = victory ? 'block' : 'none';
+    if (donBtn) donBtn.style.display = (victory && gameMode !== 'multiplayer') ? 'block' : 'none';
 
     document.getElementById('game-over').classList.remove('hidden');
+    broadcastState();
 }
 
 // ====== Double or Nothing ======
@@ -1196,6 +1232,9 @@ function updateUI() {
     const stageEl = document.getElementById('stage-num');
     if (stageEl) stageEl.textContent = gameData.stage;
 
+    // In multiplayer client mode, dealer turn means it's MY turn
+    const isClientTurn = gameMode === 'multiplayer' && multiRole === 'client' && gameData.state === GameState.DEALER_TURN;
+
     const playerInfo = document.getElementById('player-info');
     const dealerInfo = document.getElementById('dealer-info');
     playerInfo.classList.toggle('active-turn', gameData.state === GameState.PLAYER_TURN);
@@ -1214,19 +1253,304 @@ function updateUI() {
         playerItems.appendChild(card);
     });
 
-    // Dealer items (hidden)
+    // Dealer items
     const dealerItems = document.getElementById('dealer-items');
     dealerItems.innerHTML = '';
-    gameData.dealer.items.forEach(() => {
-        const card = document.createElement('div');
-        card.className = 'item-card';
-        card.innerHTML = '❓';
-        dealerItems.appendChild(card);
-    });
+    if (gameMode === 'multiplayer' && multiRole === 'client') {
+        // Client sees their own items in dealer position as ❓ (since we flipped, dealer = opponent's items)
+        // Actually after flip: dealer = host's items (opponent), show as ❓
+        gameData.dealer.items.forEach(() => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = '❓';
+            dealerItems.appendChild(card);
+        });
+    } else {
+        // Single player or Host: dealer items hidden
+        gameData.dealer.items.forEach(() => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = '❓';
+            dealerItems.appendChild(card);
+        });
+    }
 
-    const canAct = gameData.state === GameState.PLAYER_TURN;
+    const canAct = gameData.state === GameState.PLAYER_TURN || isClientTurn;
     document.getElementById('shoot-self-btn').disabled = !canAct;
     document.getElementById('shoot-dealer-btn').disabled = !canAct;
+
+    // Hide debug toggle in multiplayer
+    const debugToggle = document.getElementById('debug-toggle');
+    if (debugToggle) debugToggle.style.display = gameMode === 'multiplayer' ? 'none' : '';
+}
+
+// ====== Multiplayer ======
+
+function mpSend(data) {
+    MP.send(data);
+}
+
+function broadcastState() {
+    if (gameMode !== 'multiplayer' || multiRole !== 'host') return;
+    mpSend({
+        type: 'fullState',
+        state: {
+            stage: gameData.stage,
+            state: gameData.state,
+            player: { ...gameData.player, items: gameData.player.items.map(i => ({ id: i.id })) },
+            dealer: { ...gameData.dealer, items: gameData.dealer.items.map(i => ({ id: i.id })) },
+            shotgun: {
+                shells: gameData.shotgun.shells.map(() => '?'),
+                currentIndex: gameData.shotgun.currentIndex,
+                sawedOff: gameData.shotgun.sawedOff
+            },
+            shellInfo: { ...gameData.shellInfo },
+            donRound: gameData.donRound
+        }
+    });
+}
+
+function broadcastEvent(text, type, icon) {
+    if (gameMode !== 'multiplayer' || multiRole !== 'host') return;
+    mpSend({ type: 'eventLog', text, eventType: type, icon });
+}
+
+function broadcastMessage(text, duration) {
+    if (gameMode !== 'multiplayer' || multiRole !== 'host') return;
+    mpSend({ type: 'showMessage', text, duration });
+}
+
+/** Client: apply state received from host (with perspective flip) */
+function applyRemoteState(remote) {
+    // Client sees themselves as 'player' (bottom), opponent as 'dealer' (top)
+    // So flip: remote.dealer (client's data) → local player, remote.player (host's data) → local dealer
+    gameData.player = {
+        hp: remote.dealer.hp,
+        maxHp: remote.dealer.maxHp,
+        items: remote.dealer.items,
+        handcuffed: remote.dealer.handcuffed
+    };
+    gameData.dealer = {
+        hp: remote.player.hp,
+        maxHp: remote.player.maxHp,
+        items: remote.player.items,
+        handcuffed: remote.player.handcuffed
+    };
+    gameData.shotgun = remote.shotgun;
+    gameData.shellInfo = remote.shellInfo;
+    gameData.stage = remote.stage;
+    gameData.state = remote.state;
+    gameData.donRound = remote.donRound;
+    updateUI();
+}
+
+/** Client: handle messages from host */
+function handleHostMessage(msg) {
+    switch (msg.type) {
+        case 'fullState':
+            applyRemoteState(msg.state);
+            break;
+        case 'yourTurn':
+            gameData.state = GameState.PLAYER_TURN;
+            updateUI();
+            EventLog.add(t('event.mp.yourTurn'), 'turn-change', '👤');
+            break;
+        case 'showMessage':
+            showMessage(msg.text);
+            if (msg.duration) setTimeout(hideMessage, msg.duration);
+            break;
+        case 'eventLog':
+            EventLog.add(msg.text, msg.eventType, msg.icon);
+            break;
+        case 'gameOver':
+            // Handled via fullState
+            break;
+    }
+}
+
+/** Host: handle action messages from client */
+function handleClientMessage(msg) {
+    if (msg.type !== 'action') return;
+    if (gameData.state !== GameState.DEALER_TURN) return;
+
+    if (msg.action === 'shoot') {
+        const target = msg.target === 'self' ? 'dealer' : 'player';
+        executeShot('dealer', target);
+    } else if (msg.action === 'useItem') {
+        const item = gameData.dealer.items.find(i => i.id === msg.itemId);
+        if (item) useItem(item, 'dealer');
+    }
+}
+
+/** Start multiplayer game as host */
+async function startMultiplayerHost() {
+    gameMode = 'multiplayer';
+    multiRole = 'host';
+    document.getElementById('multiplayer-panel').classList.add('hidden');
+    document.getElementById('menu').classList.add('hidden');
+
+    gameData.stage = 1;
+    gameData.player = { hp: 2, maxHp: 2, items: [], handcuffed: false };
+    gameData.dealer = { hp: 2, maxHp: 2, items: [], handcuffed: false };
+    gameData.aiKnownShell = null;
+    EventLog.clear();
+    gameData.donRound = 0;
+
+    EventLog.add(t('event.mp.connected'), 'stage', '🌐');
+    startBGMusic();
+    await startRound();
+    broadcastState();
+}
+
+/** Start multiplayer game as client */
+function startMultiplayerClient() {
+    gameMode = 'multiplayer';
+    multiRole = 'client';
+    document.getElementById('multiplayer-panel').classList.add('hidden');
+    document.getElementById('menu').classList.add('hidden');
+
+    gameData.state = GameState.ANIMATING; // waiting for host data
+    EventLog.clear();
+    EventLog.add(t('event.mp.connected'), 'stage', '🌐');
+    startBGMusic();
+    updateUI();
+}
+
+// ====== Multiplayer Panel UI ======
+
+function openMultiplayerPanel() {
+    document.getElementById('multiplayer-panel').classList.remove('hidden');
+    showMpChoice();
+}
+
+function closeMultiplayerPanel() {
+    document.getElementById('multiplayer-panel').classList.add('hidden');
+    MP.disconnect();
+}
+
+function showMpChoice() {
+    document.getElementById('mp-choice').classList.remove('hidden');
+    document.getElementById('mp-create').classList.add('hidden');
+    document.getElementById('mp-join').classList.add('hidden');
+    document.getElementById('mp-connected').classList.add('hidden');
+    document.getElementById('mp-back-btn').classList.add('hidden');
+}
+
+async function handleMpCreate() {
+    document.getElementById('mp-choice').classList.add('hidden');
+    document.getElementById('mp-create').classList.remove('hidden');
+    document.getElementById('mp-back-btn').classList.remove('hidden');
+
+    const statusEl = document.getElementById('mp-create-status');
+    statusEl.textContent = t('multiplayer.creating');
+    statusEl.className = 'mp-status mp-status-waiting';
+
+    try {
+        const code = await MP.createRoom();
+        document.getElementById('mp-room-code').textContent = code;
+        statusEl.textContent = t('ui.waitingForOpponent');
+        statusEl.className = 'mp-status mp-status-waiting';
+
+        // Listen for connection
+        MP.onConnectionChange((state) => {
+            if (state === 'connected') {
+                statusEl.textContent = t('multiplayer.connected');
+                statusEl.className = 'mp-status mp-status-connected';
+                document.getElementById('mp-back-btn').classList.add('hidden');
+                setTimeout(() => startMultiplayerHost(), 1000);
+            } else if (state === 'disconnected') {
+                statusEl.textContent = t('multiplayer.opponentLeft');
+                statusEl.className = 'mp-status mp-status-error';
+            }
+        });
+
+        // Listen for client messages
+        MP.onMessage((msg) => handleClientMessage(msg));
+    } catch (err) {
+        statusEl.textContent = t('multiplayer.error') + ': ' + err.message;
+        statusEl.className = 'mp-status mp-status-error';
+    }
+}
+
+function handleMpJoin() {
+    document.getElementById('mp-choice').classList.add('hidden');
+    document.getElementById('mp-join').classList.remove('hidden');
+    document.getElementById('mp-back-btn').classList.remove('hidden');
+    document.getElementById('mp-code-input').focus();
+}
+
+async function handleMpConnect() {
+    const input = document.getElementById('mp-code-input');
+    const code = input.value.trim().toUpperCase();
+    const statusEl = document.getElementById('mp-join-status');
+
+    if (!code) {
+        statusEl.textContent = t('multiplayer.invalidCode');
+        statusEl.className = 'mp-status mp-status-error';
+        return;
+    }
+
+    statusEl.textContent = t('multiplayer.joining');
+    statusEl.className = 'mp-status mp-status-waiting';
+    document.getElementById('mp-connect-btn').disabled = true;
+
+    try {
+        await MP.joinRoom(code);
+        statusEl.textContent = t('multiplayer.connected');
+        statusEl.className = 'mp-status mp-status-connected';
+        document.getElementById('mp-back-btn').classList.add('hidden');
+
+        // Listen for host messages
+        MP.onMessage((msg) => handleHostMessage(msg));
+        MP.onConnectionChange((state) => {
+            if (state === 'disconnected') {
+                alert(t('multiplayer.disconnected'));
+                mpQuitToMenu();
+            }
+        });
+
+        setTimeout(() => startMultiplayerClient(), 500);
+    } catch (err) {
+        statusEl.textContent = t('multiplayer.error') + ': ' + (err.type === 'peer-unavailable' ? t('multiplayer.invalidCode') : err.message);
+        statusEl.className = 'mp-status mp-status-error';
+        document.getElementById('mp-connect-btn').disabled = false;
+    }
+}
+
+function handleMpCopyCode() {
+    const code = document.getElementById('mp-room-code').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('mp-copy-btn');
+        btn.textContent = t('ui.copied');
+        setTimeout(() => { btn.textContent = t('ui.copyCode'); }, 1500);
+    });
+}
+
+function mpQuitToMenu() {
+    MP.disconnect();
+    gameMode = 'single';
+    multiRole = null;
+    gameData.state = GameState.MENU;
+    stopBGMusic();
+    setSceneMood('calm');
+    document.getElementById('game-over').classList.add('hidden');
+    document.getElementById('menu').classList.remove('hidden');
+    updateUI();
+}
+
+function setupMultiplayerListeners() {
+    document.getElementById('multiplayer-btn').addEventListener('click', openMultiplayerPanel);
+    document.getElementById('multiplayer-close').addEventListener('click', closeMultiplayerPanel);
+    document.getElementById('mp-create-btn').addEventListener('click', handleMpCreate);
+    document.getElementById('mp-join-btn').addEventListener('click', handleMpJoin);
+    document.getElementById('mp-connect-btn').addEventListener('click', handleMpConnect);
+    document.getElementById('mp-back-btn').addEventListener('click', () => { MP.disconnect(); showMpChoice(); });
+    document.getElementById('mp-copy-btn').addEventListener('click', handleMpCopyCode);
+
+    // Enter key in code input
+    document.getElementById('mp-code-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleMpConnect();
+    });
 }
 
 init();

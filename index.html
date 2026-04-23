@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Buckshot Roulette</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script type="importmap">
     {
         "imports": {
@@ -129,6 +130,7 @@
                 <h1 data-i18n="ui.title">恶魔轮盘</h1>
                 <div class="menu-buttons">
                     <button id="start-btn" class="menu-btn" data-i18n="ui.startGame">开始游戏</button>
+                    <button id="multiplayer-btn" class="menu-btn" data-i18n="ui.multiplayer">🌐 在线联机</button>
                     <button id="achievement-btn" class="menu-btn" data-i18n="ui.achievements">🏆 成就</button>
                     <button id="how-to-play-btn" class="menu-btn menu-btn-secondary" data-i18n="ui.howToPlay">📖 游戏说明</button>
                     <button id="settings-btn" class="menu-btn menu-btn-secondary" data-i18n="settings.title">⚙️ 设置</button>
@@ -260,6 +262,47 @@
                         <button id="stats-close" class="achievement-close">&times;</button>
                     </div>
                     <div class="settings-body" id="stats-body">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Multiplayer Panel -->
+            <div id="multiplayer-panel" class="settings-panel hidden">
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <span data-i18n="ui.multiplayer">🌐 在线联机</span>
+                        <button id="multiplayer-close" class="achievement-close">&times;</button>
+                    </div>
+                    <div class="settings-body">
+                        <!-- Initial: Create / Join -->
+                        <div id="mp-choice" class="mp-choice">
+                            <button id="mp-create-btn" class="menu-btn" data-i18n="ui.createRoom">创建房间</button>
+                            <button id="mp-join-btn" class="menu-btn menu-btn-secondary" data-i18n="ui.joinRoom">加入房间</button>
+                        </div>
+                        <!-- Create Room: show room code -->
+                        <div id="mp-create" class="mp-section hidden">
+                            <p class="mp-label" data-i18n="ui.roomCode">房间码</p>
+                            <div class="mp-room-code-row">
+                                <span id="mp-room-code" class="mp-room-code">------</span>
+                                <button id="mp-copy-btn" class="mp-copy-btn" data-i18n="ui.copyCode">复制房间码</button>
+                            </div>
+                            <p id="mp-create-status" class="mp-status mp-status-waiting" data-i18n="ui.waitingForOpponent">等待对手加入...</p>
+                        </div>
+                        <!-- Join Room: input code -->
+                        <div id="mp-join" class="mp-section hidden">
+                            <p class="mp-label" data-i18n="ui.enterRoomCode">输入房间码</p>
+                            <div class="mp-join-row">
+                                <input id="mp-code-input" class="mp-code-input" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false">
+                                <button id="mp-connect-btn" class="menu-btn" data-i18n="ui.joinRoom">加入房间</button>
+                            </div>
+                            <p id="mp-join-status" class="mp-status"></p>
+                        </div>
+                        <!-- Connected status -->
+                        <div id="mp-connected" class="mp-section hidden">
+                            <p class="mp-status mp-status-connected" data-i18n="multiplayer.connected">已连接！游戏即将开始</p>
+                        </div>
+                        <!-- Back button -->
+                        <button id="mp-back-btn" class="menu-btn menu-btn-secondary mp-back-btn hidden" data-i18n="ui.back">返回</button>
                     </div>
                 </div>
             </div>
