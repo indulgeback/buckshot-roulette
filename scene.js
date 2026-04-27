@@ -13,6 +13,7 @@ let lampBulb = null;
 let tableGlow = null;
 let dealerDemon = null;
 let dustParticles = null;
+const textureLoader = new THREE.TextureLoader();
 const dealerDemonBaseY = -2.0;
 const lampBaseIntensity = 26;
 let lampFlickerPulse = 0;
@@ -130,9 +131,12 @@ export function initScene() {
   scene.add(lampBulb);
 
   // Floor
+  const woodTex = textureLoader.load('images/17-tabletop-wood-texture.png');
+  woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
+  woodTex.repeat.set(6, 6);
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(30, 30),
-    new THREE.MeshStandardMaterial({ color: 0x2b1b14, roughness: 0.9 }),
+    new THREE.MeshStandardMaterial({ map: woodTex, color: 0x3b2b1e, roughness: 0.9 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -2;
@@ -156,10 +160,13 @@ export function initScene() {
   scene.add(tableGlow);
 
   // Fallback table
+  const tableTex = woodTex.clone();
+  tableTex.repeat.set(3, 2.5);
   const fallbackTable = new THREE.Mesh(
     new THREE.BoxGeometry(10, 0.5, 8),
     new THREE.MeshStandardMaterial({
-      color: 0x4a2f1a,
+      map: tableTex,
+      color: 0x6a4f3a,
       roughness: 0.7,
       metalness: 0.1,
     }),

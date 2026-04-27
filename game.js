@@ -35,6 +35,18 @@ const Items = {
     ADRENALINE: { id: 'adrenaline' }
 };
 
+const ITEM_IMAGES = {
+    magnifying_glass: 'images/01-magnifying-glass.png',
+    beer: 'images/02-beer-bottle.png',
+    handsaw: 'images/03-handsaw.png',
+    cigarette: 'images/04-cigarettes.png',
+    handcuffs: 'images/05-handcuffs.png',
+    expired_medicine: 'images/06-expired-medicine.png',
+    inverter: 'images/07-reverser-switch.png',
+    burner_phone: 'images/08-burner-phone.png',
+    adrenaline: 'images/09-adrenaline-syringe.png'
+};
+
 const STAGE_CONFIG = {
     1: { hp: 2, items: 0 },
     2: { hp: 4, items: 3 },
@@ -1249,8 +1261,8 @@ function donLost() {
 function updateUI() {
     const ph = Math.max(0, gameData.player.hp);
     const dh = Math.max(0, gameData.dealer.hp);
-    document.getElementById('player-hp').textContent = '⚡'.repeat(ph);
-    document.getElementById('dealer-hp').textContent = '⚡'.repeat(dh);
+    document.getElementById('player-hp').innerHTML = '<img class="hp-icon" src="images/14-hp-lightning-icon.png" alt="HP">'.repeat(ph);
+    document.getElementById('dealer-hp').innerHTML = '<img class="hp-icon" src="images/14-hp-lightning-icon.png" alt="HP">'.repeat(dh);
     document.getElementById('live-count').textContent = gameData.shellInfo.live;
     document.getElementById('blank-count').textContent = gameData.shellInfo.blank;
 
@@ -1271,9 +1283,11 @@ function updateUI() {
     gameData.player.items.forEach((item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
-        const name = t(`item.${item.id}.name`);
         const desc = t(`item.${item.id}.desc`);
-        card.innerHTML = `${name}<div class="item-name">${desc}</div>`;
+        const imgSrc = ITEM_IMAGES[item.id] || '';
+        card.innerHTML = imgSrc
+            ? `<img class="item-icon" src="${imgSrc}" alt="${desc}"><div class="item-name">${desc}</div>`
+            : `${t(`item.${item.id}.name`)}<div class="item-name">${desc}</div>`;
         card.onclick = () => useItem(item, 'player');
         playerItems.appendChild(card);
     });
@@ -1281,23 +1295,16 @@ function updateUI() {
     // Dealer items
     const dealerItems = document.getElementById('dealer-items');
     dealerItems.innerHTML = '';
+    const renderHiddenCard = () => {
+        const card = document.createElement('div');
+        card.className = 'item-card hidden-card';
+        card.innerHTML = `<div class="item-icon-hidden">?</div><div class="item-name">???</div>`;
+        return card;
+    };
     if (gameMode === 'multiplayer' && multiRole === 'client') {
-        // Client sees their own items in dealer position as ❓ (since we flipped, dealer = opponent's items)
-        // Actually after flip: dealer = host's items (opponent), show as ❓
-        gameData.dealer.items.forEach(() => {
-            const card = document.createElement('div');
-            card.className = 'item-card';
-            card.innerHTML = '❓';
-            dealerItems.appendChild(card);
-        });
+        gameData.dealer.items.forEach(() => dealerItems.appendChild(renderHiddenCard()));
     } else {
-        // Single player or Host: dealer items hidden
-        gameData.dealer.items.forEach(() => {
-            const card = document.createElement('div');
-            card.className = 'item-card';
-            card.innerHTML = '❓';
-            dealerItems.appendChild(card);
-        });
+        gameData.dealer.items.forEach(() => dealerItems.appendChild(renderHiddenCard()));
     }
 
     const canAct = gameData.state === GameState.PLAYER_TURN || isClientTurn;
