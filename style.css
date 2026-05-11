@@ -1,5 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
 
+.version-footer {
+    position: fixed;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: var(--font-tech);
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+    z-index: 9999;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -665,6 +678,23 @@ body::after {
     z-index: 1;
     width: 100%;
     min-width: 240px;
+}
+
+.beta-badge {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: linear-gradient(135deg, #c9a227, #a67c00);
+    color: #1a1a1a;
+    font-size: 11px;
+    font-family: var(--font-tech);
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 2;
 }
 
 .menu-buttons {
@@ -1981,9 +2011,17 @@ body::after {
 
 .mp-join-row {
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    gap: 12px;
     align-items: center;
     width: 100%;
+}
+
+.mp-join-row .menu-btn {
+    width: auto;
+    min-width: unset;
+    padding: 12px 48px;
+    font-size: 20px;
 }
 
 .mp-code-input {

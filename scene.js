@@ -81,9 +81,9 @@ export function initScene() {
   setupPostProcessing();
 
   // Lights
-  ambientLightRef = new THREE.AmbientLight(0xb89c76, 2.8);
+  ambientLightRef = new THREE.AmbientLight(0xb89c76, 6.0);
   scene.add(ambientLightRef);
-  scene.add(new THREE.HemisphereLight(0xffdfb6, 0x2f1c13, 1.4));
+  scene.add(new THREE.HemisphereLight(0xffdfb6, 0x2f1c13, 2.8));
 
   redLightRef = new THREE.PointLight(0xff4444, 1.5, 26);
   redLightRef.position.set(-4, 6, 4);
@@ -101,7 +101,7 @@ export function initScene() {
     lampBaseIntensity,
     42,
     Math.PI / 8,
-    0.7,
+    1.0,
     1.0,
   );
   hangingLamp.position.set(0, 10, 0);
@@ -144,12 +144,28 @@ export function initScene() {
   scene.add(floor);
 
   // Soft warm highlight pool on the tabletop under the hanging lamp.
+  const glowSize = 512;
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = glowSize;
+  glowCanvas.height = glowSize;
+  const glowCtx = glowCanvas.getContext('2d');
+  const grad = glowCtx.createRadialGradient(
+    glowSize / 2, glowSize / 2, 0,
+    glowSize / 2, glowSize / 2, glowSize / 2,
+  );
+  grad.addColorStop(0, 'rgba(255,193,113,0.28)');
+  grad.addColorStop(0.4, 'rgba(255,193,113,0.14)');
+  grad.addColorStop(0.75, 'rgba(255,193,113,0.05)');
+  grad.addColorStop(1, 'rgba(255,193,113,0)');
+  glowCtx.fillStyle = grad;
+  glowCtx.fillRect(0, 0, glowSize, glowSize);
+  const glowTex = new THREE.CanvasTexture(glowCanvas);
+
   tableGlow = new THREE.Mesh(
-    new THREE.CircleGeometry(2.6, 48),
+    new THREE.CircleGeometry(3.2, 48),
     new THREE.MeshBasicMaterial({
-      color: 0xffc171,
+      map: glowTex,
       transparent: true,
-      opacity: 0.18,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     }),
